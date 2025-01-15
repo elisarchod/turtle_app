@@ -2,7 +2,7 @@
 name = "tutle-langchain"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
 readme = "README.md"
 package-mode = false
 
@@ -20,6 +20,11 @@ bs4 = "^0.0.2"
 fastapi = "^0.115.6"
 langgraph-cli = {extras = ["inmem"], version = "^0.1.65"}
 pip = "^24.3.1"
+
+[[tool.poetry.source]]
+name = "private-repo"
+url = "git+ssh://git@github.com/Elisarchod/turtle-app.git"
+priority = "supplemental"
 
 
 [build-system]
