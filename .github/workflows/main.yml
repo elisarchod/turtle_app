@@ -12,8 +12,8 @@ jobs:
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GAR_LOCATION: us-central1  # Replace with your Artifact Registry location
-      REPOSITORY: my-docker-repo  # Replace with your Artifact Registry repository name
-      IMAGE_NAME: my-app-image  # Replace with your desired image name
+      REPOSITORY:  turtle-app  # Replace with your Artifact Registry repository name
+      IMAGE_NAME: main  # Replace with your desired image name
     permissions:
       contents: 'read'
       id-token: 'write'
