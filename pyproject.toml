@@ -8,7 +8,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 langgraph = "^0.2.53"
-langchain = "^0.3.7"
 langsmith = "^0.1.143"
 langchain-pinecone = "^0.2.0"
 langchain-openai = "^0.2.11"
