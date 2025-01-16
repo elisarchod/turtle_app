@@ -1,12 +1,11 @@
-FROM python:3.11
+FROM langchain/langgraph-api:3.11
 
-WORKDIR /app
 
-COPY poetry.lock pyproject.toml ./
-RUN pip install poetry
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-dev
 
-COPY . .
+ADD . /deps/turtle-app
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN PYTHONDONTWRITEBYTECODE=1 pip install --no-cache-dir -c /api/constraints.txt -e /deps/*
+
+ENV LANGSERVE_GRAPHS='{"agent": "/deps/turtle-app/app/graph.py:agent"}'
+
+WORKDIR /deps/turtle-app
