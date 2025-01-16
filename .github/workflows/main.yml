@@ -11,7 +11,7 @@ jobs:
 
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GAR_LOCATION: us-central1  # Replace with your Artifact Registry location
+      GAR_LOCATION: europe-west1  # Replace with your Artifact Registry location
       REPOSITORY:  turtle-app  # Replace with your Artifact Registry repository name
       IMAGE_NAME: main  # Replace with your desired image name
     permissions:
