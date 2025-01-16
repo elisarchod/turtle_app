@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tutle-langchain"
+name = "app"
 version = "0.1.0"
 description = ""
 authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
