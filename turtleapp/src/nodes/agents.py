@@ -8,10 +8,10 @@ from langgraph.graph.graph import CompiledGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from app.configuration import agent_model
-from app.src.tools.random_number_gen import rand_gen
-from app.src.tools.retriver_movie_summeries import retriever_tool
-from app.src.tools.tools_torrent import torrent_info_tool
+from turtleapp.configuration import agent_model
+from turtleapp.src.tools.random_number_gen import rand_gen
+from turtleapp.src.tools.retriver_movie_summeries import retriever_tool
+from turtleapp.src.tools.tools_torrent import torrent_info_tool
 
 llm = ChatOpenAI(temperature=0, model=agent_model)
 

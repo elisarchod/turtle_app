@@ -24,6 +24,7 @@ from langchain.tools import BaseTool
 from langchain_core.tools import Tool
 
 IP_ADDRESS = "http://192.168.1.250:15080"
+
 def get_torrents_info() -> List[Dict[str, Any]]:
     url = f"{IP_ADDRESS}/api/v2/torrents/info?filter=downloading"
     headers = {'Referer': IP_ADDRESS}

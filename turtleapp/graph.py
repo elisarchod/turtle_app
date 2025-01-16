@@ -6,9 +6,9 @@ from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from app.configuration import supervisor_model
-from app.src.nodes.agents import coder_node, retriver_node, torrent_node
-from app.src.nodes.supervisor import SupervisorNodeCreator
+from turtleapp.configuration import supervisor_model
+from turtleapp.src.nodes.agents import coder_node, retriver_node, torrent_node
+from turtleapp.src.nodes.supervisor import SupervisorNodeCreator
 
 
 supervisor_llm = ChatOpenAI(temperature=0, model=supervisor_model)

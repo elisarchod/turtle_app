@@ -3,7 +3,7 @@ from langchain_core.tools import Tool, create_retriever_tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 
-from app.configuration import embedding_model, index_name
+from turtleapp.configuration import embedding_model, index_name
 
 vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(index_name=index_name,
                                                                             embedding=OpenAIEmbeddings(model=embedding_model))
