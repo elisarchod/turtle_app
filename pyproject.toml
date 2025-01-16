@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "app"
+name = "turtleapp"
 version = "0.1.0"
 description = ""
 authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
