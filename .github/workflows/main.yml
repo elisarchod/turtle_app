@@ -1,0 +1,45 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch (adjust as needed)
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GAR_LOCATION: us-central1  # Replace with your Artifact Registry location
+      REPOSITORY: my-docker-repo  # Replace with your Artifact Registry repository name
+      IMAGE_NAME: my-app-image  # Replace with your desired image name
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: |-
+          gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev --quiet
+
+      - name: Build Docker image
+        run: |-
+          docker build -t "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:\
+          ${{ github.sha }}" .
+
+      - name: Push Docker image
+        run: |-
+          docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:\
+          ${{ github.sha }}"
