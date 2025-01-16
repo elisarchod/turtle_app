@@ -1,6 +1,15 @@
 
+### run cli
 
+``python3 -m venv my_langgraph_env``
 
+``source my_langgraph_env/bin/activate``
+
+``pip install langgraph-cli ``
+
+``pip install "langgraph-cli[inmem]"``
+
+````
 
 data set from https://paperswithcode.com/dataset/cmu-movie-summary-corpus
 https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/#create-tools
