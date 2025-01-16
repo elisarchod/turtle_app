@@ -3,7 +3,7 @@
     "."
   ],
   "graphs": {
-    "agent": "./app/graph.py:agent"
+    "agent": "turtleapp/graph.py:agent"
   },
   "env": ".env"
 }
