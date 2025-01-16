@@ -1,14 +1,13 @@
 from fastapi import FastAPI
 
+from turtleapp.graph import agent
+
 app = FastAPI()
 
 
-@app.get("/agents/{agent_name}")
-async def get_agent(agent_name: str):
-    # This is where you'll fetch and return
-    # information about the agent with the given name
-    # For now, let's return a simple message
-    return {"message": f"Agent {agent_name} requested"}
+@app.get("/ask_agent")
+async def get_agent(messeage: str):
+    return agent.invoke({"message": messeage})
 
 
 if __name__ == "__main__":

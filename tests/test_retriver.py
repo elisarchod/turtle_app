@@ -7,7 +7,7 @@ from langsmith import Client
 from langsmith.schemas import Example, Run
 from langsmith import evaluate
 load_dotenv(override=True)
-from app.src.nodes.agents import retriver_node
+from turtleapp.src.nodes.agents import retriver_node
 EVALSET_NAME = "home_assistant_recommendations"
 
 grade_prompt_doc_relevance = hub.pull("langchain-ai/rag-document-relevance")
