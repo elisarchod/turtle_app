@@ -23,3 +23,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 turtle-app-ep = "turtleapp.app:app"
+
+[tool.poetry.packages]
+include = "turtleapp"
