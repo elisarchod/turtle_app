@@ -3,7 +3,6 @@ name = "turtleapp"
 version = "0.1.0"
 description = ""
 authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
-readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
