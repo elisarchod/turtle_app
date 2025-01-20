@@ -1,9 +1,9 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Images
 
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch (adjust as needed)
+      - main
 
 jobs:
   build-and-push:
@@ -11,12 +11,20 @@ jobs:
 
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GAR_LOCATION: europe-west1  # Replace with your Artifact Registry location
-      REPOSITORY:  turtle-app  # Replace with your Artifact Registry repository name
-      IMAGE_NAME: main  # Replace with your desired image name
+      GAR_LOCATION: europe-west1
+      REPOSITORY: turtle-app
+
     permissions:
       contents: 'read'
       id-token: 'write'
+
+    strategy:
+      matrix:
+        image:
+          - name: fastapi
+            dockerfile: DockerfileFastapi
+          - name: smith
+            dockerfile: DockerfileSmith
 
     steps:
       - name: Checkout code
@@ -36,10 +44,8 @@ jobs:
 
       - name: Build Docker image
         run: |-
-          docker build -t "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:\
-          ${{ github.sha }}" .
+          docker build -f ${{ matrix.image.dockerfile }} -t "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${{ matrix.image.name }}:${{ github.sha }}" .
 
       - name: Push Docker image
         run: |-
-          docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:\
-          ${{ github.sha }}"
+          docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${{ matrix.image.name }}:${{ github.sha }}"
