@@ -1,2 +1,2 @@
 #!/bin/bash
-poetry run pytest  # Or your preferred test runner command≈
+poetry run pytest
