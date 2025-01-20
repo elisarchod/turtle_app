@@ -23,6 +23,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-turtle-app-ep = "turtleapp.app:app"
+turtle-app-ep = "turtleapp.api_app:app"
 
 
