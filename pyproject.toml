@@ -3,6 +3,7 @@ name = "turtleapp"
 version = "0.1.0"
 description = ""
 authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
+packages = [{ include = "turtleapp" }]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
@@ -24,5 +25,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 turtle-app-ep = "turtleapp.app:app"
 
-[tool.poetry.packages]
-include = "turtleapp"
+
