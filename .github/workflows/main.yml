@@ -21,10 +21,10 @@ jobs:
     strategy:
       matrix:
         image:
-#          - name: turtle-app-fastapi
-#            dockerfile: DockerfileFastapi
-          - name: turtle-app-smith
-            dockerfile: DockerfileSmith
+          - name: turtle-app-fastapi
+            dockerfile: DockerfileFastapi
+#          - name: turtle-app-smith
+#            dockerfile: DockerfileSmith
 
     steps:
       - name: Checkout code
