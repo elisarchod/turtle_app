@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Docker Deploy to ECR
 
 on:
   push:
@@ -6,46 +6,34 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  deploy:
+    name: Deploy to ECR
     runs-on: ubuntu-latest
-
-    env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GAR_LOCATION: europe-west1
-      REPOSITORY: turtle-app
-
     permissions:
-      contents: 'read'
-      id-token: 'write'
-
-    strategy:
-      matrix:
-        image:
-          - name: turtle-app-fastapi
-            dockerfile: DockerfileFastapi
-#          - name: turtle-app-smith
-#            dockerfile: DockerfileSmith
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Authenticate to Google Cloud
-        uses: 'google-github-actions/auth@v2'
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          role-to-assume: arn:aws:iam::196665793287:role/github-action-turtle
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Configure Docker
-        run: |-
-          gcloud auth configure-docker $GAR_LOCATION-docker.pkg.dev --quiet
-
-      - name: Build Docker image
-        run: |-
-          docker build -f ${{ matrix.image.dockerfile }} -t "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${{ matrix.image.name }}:${{ github.sha }}" .
-
-      - name: Push Docker image
-        run: |-
-          docker push "$GAR_LOCATION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/${{ matrix.image.name }}:${{ github.sha }}"
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_NAME: turtle-app
+        run: |
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG . # chodorov/turtle-app # eu-central-1
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$IMAGE_NAME:latest # Pushing latest tag as well
