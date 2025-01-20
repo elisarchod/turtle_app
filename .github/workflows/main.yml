@@ -21,9 +21,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - name: fastapi
+          - name: turtle-app-fastapi
             dockerfile: DockerfileFastapi
-          - name: smith
+          - name: turtle-app-smith
             dockerfile: DockerfileSmith
 
     steps:
