@@ -4,8 +4,10 @@ from langchain.globals import set_verbose
 load_dotenv(override=True)
 set_verbose(True)
 
-from app.graph import agent
-
+from turtleapp.graph import agent
+agent
+# import os
+# os.environ["LANGCHAIN_PROJECT"]
 
 config = {"configurable": {"thread_id": "gen_int_13"}} # , "run_name": "gen_numbers_test_01"
 
