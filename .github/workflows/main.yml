@@ -35,5 +35,4 @@ jobs:
           IMAGE_NAME: chodorov/turtle-app
         run: |
           docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$IMAGE_NAME:latest # Pushing latest tag as well
+          docker push $ECR_REGISTRY/$IMAGE_NAME:latest 
