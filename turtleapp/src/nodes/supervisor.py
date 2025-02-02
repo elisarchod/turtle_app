@@ -9,6 +9,10 @@ from langgraph.constants import END
 from langgraph.graph import MessagesState
 from langgraph.types import Command
 
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
 hub_prompt: ChatPromptTemplate = hub.pull("supervisor_prompt_with_placeholder")
 
 class Router(TypedDict):

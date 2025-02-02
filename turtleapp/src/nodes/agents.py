@@ -18,12 +18,12 @@ llm = ChatOpenAI(temperature=0, model=agent_model)
 def create_node(tool: Tool,
                 state: MessagesState,
                 name: str) -> Command[Literal["supervisor"]]:
-    data_retriever_agent: CompiledGraph = create_react_agent(llm,
+    react_agent: CompiledGraph = create_react_agent(llm,
                                                        tools=[tool],
                                                        state_modifier=SystemMessage("you are a super executione tool and you interact with "
                                                                                     f"the following tool and assert it gives good results {tool.description}" ))
-    data_retriever_agent.name = name
-    result = data_retriever_agent.invoke(state)["messages"][-1].content
+    react_agent.name = name
+    result = react_agent.invoke(state)["messages"][-1].content
     return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
 
 

@@ -1,5 +1,7 @@
 import os
+
 from dotenv import load_dotenv
+
 load_dotenv(override=True)
 
 supervisor_model = os.environ["SUPERVISOR_MODEL"]
@@ -8,11 +10,10 @@ index_name = os.environ["INDEX_NAME"]
 embedding_model = os.environ["EMBEDDINGS_MODEL"]
 
 import os
-from dataclasses import dataclass, field, fields
+from dataclasses import fields
 from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
-from typing_extensions import Annotated
 from dataclasses import dataclass
 
 
