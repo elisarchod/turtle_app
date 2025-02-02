@@ -7,8 +7,8 @@ from langgraph_sdk import get_sync_client
 load_dotenv(override=True)
 client = get_sync_client(url=os.environ["LANGSMITH_ENDPOINT"], api_key=os.environ["LANGCHAIN_API_KEY"])
 graph_name = "home_recommender"
-# assistant id 8d1135ad-00f6-5552-af4f-35a99dc143b8
-assistant = client.assistants.get(assistant_id=graph_name)
+assistant_id = "8d1135ad-00f6-5552-af4f-35a99dc143b8"
+assistant = client.assistants.get(assistant_id=assistant_id)
 
 response = client.ask(assistant_id=graph_name,
                       query="bla bla bla",

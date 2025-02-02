@@ -49,7 +49,7 @@ data_retriever_agent: CompiledGraph = create_react_agent(llm,
                                                    tools=[retriever_tool],
                                                    state_modifier=SystemMessage(
                                                        "you are a super executione tool and you interact with "
-                                                       f"the following tool and assert it gives good results {tool.description}"))
+                                                       f"the following tool and assert it gives good results {retriever_tool.description}"))
 data_retriever_agent.name = "data_retriever_agent"
 
 
