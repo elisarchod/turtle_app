@@ -23,6 +23,6 @@ builder.add_node("python_functions", coder_node)
 builder.add_node("torrent_download_client", torrent_node)
 
 use_checkpointer = os.environ.get("WITH_CHECKPOINTER") == "true"
-checkpointer = MemorySaver() if use_checkpointer else None
-agent: CompiledStateGraph = builder.compile(checkpointer=checkpointer)
-agent.name = "Multi-agent supervisor"
+checkpointer = MemorySaver() #if use_checkpointer else None
+home_agent: CompiledStateGraph = builder.compile(checkpointer=checkpointer)
+home_agent.name = "Multi-agent supervisor"

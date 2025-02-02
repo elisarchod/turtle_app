@@ -3,7 +3,8 @@
     "."
   ],
   "graphs": {
-    "home_recommender": "turtleapp/graph.py:agent"
+    "home_recommender": "turtleapp/graph.py:home_agent",
+    "data_retriever_agent": "turtleapp/src/nodes/agents.py:data_retriever_agent"
   },
   "env": ".env"
 }

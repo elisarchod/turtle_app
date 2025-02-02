@@ -18,15 +18,13 @@ llm = ChatOpenAI(temperature=0, model=agent_model)
 def create_node(tool: Tool,
                 state: MessagesState,
                 name: str) -> Command[Literal["supervisor"]]:
-    research_agent: CompiledGraph = create_react_agent(llm,
+    data_retriever_agent: CompiledGraph = create_react_agent(llm,
                                                        tools=[tool],
                                                        state_modifier=SystemMessage("you are a super executione tool and you interact with "
-                                                                                    f"the following tool and assert it gives good results {tool.description}" )
-                                                       )
-    research_agent.name = name
-    result = research_agent.invoke(state)["messages"][-1].content
-    return Command(update={"messages": [HumanMessage(content=result)]},
-                   goto="supervisor")
+                                                                                    f"the following tool and assert it gives good results {tool.description}" ))
+    data_retriever_agent.name = name
+    result = data_retriever_agent.invoke(state)["messages"][-1].content
+    return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
 
 
 def retriver_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -45,6 +43,15 @@ def torrent_node(state: MessagesState) -> Command[Literal["supervisor"]]:
     return create_node(torrent_info_tool,
                        state,
                        "torrent_download_client_agent")
+
+
+data_retriever_agent: CompiledGraph = create_react_agent(llm,
+                                                   tools=[retriever_tool],
+                                                   state_modifier=SystemMessage(
+                                                       "you are a super executione tool and you interact with "
+                                                       f"the following tool and assert it gives good results {tool.description}"))
+data_retriever_agent.name = "data_retriever_agent"
+
 
 if __name__ == '__main__':
     retriver_node({"messages": "recommend 3 comedy movies"}).update["messages"][-1].pretty_print()

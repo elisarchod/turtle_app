@@ -1,35 +1,4 @@
-"""
-call the server using python
-curl https://langchain-ai.github.io/assistants/search \
-  --request POST \
-  --header 'Content-Type: application/json' \
-  --data '{
-  "metadata": {},
-  "graph_id": "",
-  "limit": 10,
-  "offset": 0
-}'
-
-
-"""
-import requests
-url_base = "https://langchain-ai.github.io/"
-url_base = " http://127.0.0.1:2024"
-url = f"{url_base}/assistants/search"
-
-headers = {
-    "Content-Type": "application/json"
-}
-data = {
-    "metadata": {},
-    "graph_id": "",
-    "limit": 10,
-    "offset": 0
-}
-
-response = requests.post(url, headers=headers, json=data)
-print(response.json())
-
+import os
 import requests
 from dotenv import load_dotenv
 from langgraph_sdk import get_client
@@ -37,7 +6,130 @@ from langgraph_sdk import get_sync_client
 
 load_dotenv(override=True)
 client = get_sync_client(url=os.environ["LANGSMITH_ENDPOINT"], api_key=os.environ["LANGCHAIN_API_KEY"])
-client.assistants.search()
+graph_name = "home_recommender"
+# assistant id 8d1135ad-00f6-5552-af4f-35a99dc143b8
+assistant = client.assistants.get(assistant_id=graph_name)
+
+response = client.ask(assistant_id=graph_name,
+                      query="bla bla bla",
+                      thread_id=1111)  # Include thread_id if needed
+
+
+
+client.runs.list_runs(project_name=graph_name, execution_order=1, error=False)
+client.runs.list(thread_id=1)
+runs = client.runs.list(
+    project_name=graph_name,
+    # start_time=start_time,
+    # end_time=end_time,
+    execution_order=1,
+    # Top-level runs only
+    error=False,
+    # Successful runs only
+    )
+
+assistant = client.assistants.get(graph_name)
+
+
+client.runs.create(assistant_id=graph_name, thread_id="thread_456",
+                   input={"message": "bla bla"},)
+
+
+
+
+# --- 3. Process Runs and Calculate Metrics ---
+latencies = []
+for run in runs:
+    if run.end_time and run.start_time:
+        latency = (run.end_time - run.start_time).total_seconds()
+        latencies.append(latency)
+
+# --- 4. Analyze and Answer the Question ---
+if latencies:
+    average_latency = sum(latencies) / len(latencies)
+    print(f"Question: {question}")
+    print(f"Answer: The average latency over the last 24 hours for successful runs is: {average_latency:.2f} seconds")
+else:
+    print(f"Question: {question}")
+    print("Answer: No successful runs found in the specified time range.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+client.assistants.get_graph(assistant_id="home_recommender")
+
+client.threads.create(assistant_id="home_recommender", data={"metadata": {
+    "configurable": {"thread_id": "gen_int_13"}}})
+
+client.threads.create()
+
+
+config = {"configurable": {"thread_id": "gen_int_13"}}  # , "run_name": "gen_numbers_test_01"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+assistant =  client.assistants.create(graph_id="agent",
+    config={"configurable": {"model_name": "openai"}},
+    metadata={"number": 1},
+    assistant_id="home_recommender",
+    if_exists="do_nothing",
+    name="my_name")
+
+
+
+# result: AddableValuesDict = agent.invoke({
+#                                              "messages": "tell me the plot of terminator 2 ?"}, )  # config=config,
+# result['messages'][-1].pretty_print()
+# """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

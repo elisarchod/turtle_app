@@ -9,8 +9,6 @@ agent
 # import os
 # os.environ["LANGCHAIN_PROJECT"]
 
-config = {"configurable": {"thread_id": "gen_int_13"}} # , "run_name": "gen_numbers_test_01"
-
 # # msg = 'Generate 3 floats in [0.1, 3.3333], rounded to 4 decimals.'
 # msg = 'i want 3 action movies, only names of movies known to locally'
 # msg = 'another 3 action movies, only names of movies known to locally'
@@ -22,6 +20,8 @@ config = {"configurable": {"thread_id": "gen_int_13"}} # , "run_name": "gen_numb
 # {"question": "recommend 2 bollywood movies"},
 # {"question": "recommend a bollywood movie"},
 # {"question": "recent movies i downloaded in torrent?"}
+
+config = {"configurable": {"thread_id": "gen_int_13"}} # , "run_name": "gen_numbers_test_01"
 
 result: AddableValuesDict = agent.invoke({"messages": "tell me the plot of terminator 2 ?"}, ) #  config=config,
 result['messages'][-1].pretty_print()
