@@ -1,3 +1,8 @@
+Hi,
+this is my first e2e project for levereging the LLM usages
+I used langchain as my development platform and thire guidelince for best practice 
+the purpose here is not to build the best app but to experiment with many tools as possible
+
 ### Usage for the project:
 
 Have a home personal assistant for home theater with different services (call qbitorrnet, sickchill for managing the torrent search )
@@ -67,6 +72,7 @@ Progress of  with history of movies and their summaries:
 - [ ] telegram bot https://github.com/python-telegram-bot/python-telegram-bot?tab=readme-ov-file
 - [x] should store conversation history in a database
 - [ ] create designated prompts for the user to interact with the bot
+- [ ] use self hosted model (llama, deepseek)  
 
 data set from https://paperswithcode.com/dataset/cmu-movie-summary-corpus
 https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/#create-tools
