@@ -1,7 +1,8 @@
 ````markdown
 # Home Theater Personal Assistant
 
-This project is a personal home theater assistant leveraging Large Language Models (LLMs) and LangChain, designed to interact with various services on my local network (192.168.1.205, running Docker Compose).  The primary goal is experimentation with different LLM tools and integrations, rather than building a production-ready application.  Currently, this is a side project with several planned improvements.
+This project is a personal home theater assistant leveraging Large Language Models (LLMs) and LangChain, designed to interact with various services on my local network (running Docker Compose [repo](https://github.com/Elisarchod/stack))
+ ).  The primary goal is experimentation with different LLM tools and integrations, rather than building a production-ready application.  Currently, this is a side project with several planned improvements.
 
 ## Overview
 
