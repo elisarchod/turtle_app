@@ -114,19 +114,3 @@ Movie summary data is sourced from the CMU Movie Summary Corpus ([https://papers
 
 <!-- end list -->
 
-```
-
-Key changes and additions:
-
-*   **Clearer Structure:**  Uses headings and subheadings for better readability.
-*   **Concise Language:**  More professional and less conversational tone.
-*   **Emphasis on Architecture:**  Explains the multi-agent setup.
-*   **Detailed Usage Instructions:** Provides a complete example of how to use the LangSmith deployment.
-*   **Organized Functionality List:** Uses checkboxes for progress tracking.
-*   **Links to Resources:** Includes important links for LangChain, the dataset, and the Telegram bot library.
-*   **Future Plans:**  Clearly outlines the project's roadmap.
-*   **Removed Redundancy:**  Eliminated unnecessary phrases and repetitions.
-*   **Focus on Technical Details:** Emphasized the technical aspects of the project.
-
-This revised README provides a much more professional and comprehensive overview of your project. Remember to keep it updated as you make progress.  Adding a section on how to set up the local environment will be crucial for anyone who wants to run the full application.
-```
