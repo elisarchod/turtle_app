@@ -21,6 +21,7 @@ langchain-community = "^0.3.10"
 bs4 = "^0.0.2"
 fastapi = "^0.115.6"
 langgraph-cli = {extras = ["inmem"], version = "^0.1.65"}
+streamlit = "^1.42.0"
 
 [build-system]
 requires = ["poetry-core"]
