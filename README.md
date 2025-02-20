@@ -1,7 +1,14 @@
 Hi,
-this is my first e2e project for levereging the LLM usages
-I used langchain as my development platform and thire guidelince for best practice 
-the purpose here is not to build the best app but to experiment with many tools as possible
+this is my first e2e project for levereging the LLM usages  
+I used langchain as my development platform and thire guidelince for best practice   
+
+the purpose here is not to build the best app but to experiment with many tools as possible  
+and obviusly this is curenly only a side projects and there are lot of areas to cover  
+ok, so my application runs cretes an agent that runs on my local network and can accese tools:  
+
+- it can use RAG which can accese a pinecone vactor DB with details about movies form the year 2017
+- it can run some simpe python fucntions 
+- and it call a torrent client on
 
 ### Usage for the project:
 
@@ -11,8 +18,8 @@ Have a home personal assistant for home theater with different services (call qb
 
 - Used ReAct agent
 - with checkpointers
-- tracing
-- deployed to langsmith (example for sdk call):
+- RAG
+- deployed to langsmith (example for sdk call), here only the RAG will work, you can ask about movies from the year 2017  :
 ```python
 import os
 from langgraph.pregel.remote import RemoteGraph
