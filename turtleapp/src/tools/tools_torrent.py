@@ -22,16 +22,40 @@ from typing import Literal, Tuple, Any, Dict, List
 import requests
 from langchain.tools import BaseTool
 from langchain_core.tools import Tool
-
+from typing import List, Dict, Any
+import requests
 IP_ADDRESS = "http://192.168.1.250:15080"
+CREDENTIALS = {'username': 'admin', 'password': 'adminadmin'}
+URL = f"{IP_ADDRESS}/api/v2"
 
-def get_torrents_info() -> List[Dict[str, Any]]:
-    url = f"{IP_ADDRESS}/api/v2/torrents/info?filter=downloading"
+#
+# >> > from qbittorrentapi import Client >> > client = Client(host='localhost:8080',
+#                                                             username='admin',
+#                                                             password='adminadmin') >> > search_job = client.search_start(
+#     pattern='Ubuntu',
+#     plugins='all',
+#     category='all') >> > client.search_stop(search_id=search_job.id) >> >  # or
+# >> > search_job.stop()
+
+
+
+def get_torrents_info(call: str) -> List[Dict[str, Any]]:
+    url = f"{URL}{call}"
     headers = {'Referer': IP_ADDRESS}
-    data = {'username': 'admin', 'password': 'adminadmin'}
-
-    response = requests.post(url, headers=headers, data=data)
+    response = requests.post(url, headers=headers, data=CREDENTIALS)
+    response.raise_for_status()  # Ensure HTTP errors are raised
     return response.json()
+
+def beutify_torrent_details(torrent_details):
+    return {
+        "content_path": torrent_details.get('content_path', ''),
+        "name": torrent_details.get('name', ''),
+        "progress": torrent_details.get('progress', 0.0)}
+
+def get_torrnts_info() -> List[Dict[str, Any]]:
+    torrents = get_torrents_info('/torrents/info?filter=downloading')
+    processed_torrents = list(map(beutify_torrent_details, torrents))
+    return processed_torrents
 
 class TorrentClientTool(BaseTool):
     name: str = "torrent_local_client_tool"
@@ -41,15 +65,7 @@ class TorrentClientTool(BaseTool):
         if request_type == 'list':
             print("*"*100)
         torrents = get_torrents_info()
-        processed_torrents = []
-        for torrent in torrents:
-            processed_torrent = {
-                "content_path":   torrent.get('content_path', ''),
-                "name":           torrent.get('name', ''),
-                "progress":       torrent.get('progress', 0.0)
-                }
-            processed_torrents.append(processed_torrent)
-        content = 'Here are the currently downloading torrents in my local network: \n\n'
+
         return processed_torrents
 
 torrent_info_tool: Tool = TorrentClientTool()

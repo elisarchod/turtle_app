@@ -1,5 +1,4 @@
 from typing import Literal
-
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
@@ -8,50 +7,42 @@ from langgraph.graph.graph import CompiledGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from turtleapp.configuration import agent_model
+from turtleapp.config.settings import agent_model
+from turtleapp.core.agents.base import BaseAgent
 from turtleapp.src.tools.random_number_gen import rand_gen
 from turtleapp.src.tools.retriver_movie_summeries import retriever_tool
-from turtleapp.src.tools.tools_torrent import torrent_info_tool
+from .tools.tools_torrent import torrent_info_tool
 
-llm = ChatOpenAI(temperature=0, model=agent_model)
+class ToolAgent(BaseAgent):
+    def __init__(self, tool: Tool, name: str):
+        super().__init__(ChatOpenAI(temperature=0, model=agent_model))
+        self.tool = tool
+        self.name = name
+        self.agent = create_react_agent(
+            self.llm,
+            tools=[tool],
+            state_modifier=SystemMessage(
+                f"you are a super executione tool and you interact with the following tool and assert it gives good results {tool.description}"
+            )
+        )
+        self.agent.name = name
 
-def create_node(tool: Tool,
-                state: MessagesState,
-                name: str) -> Command[Literal["supervisor"]]:
-    react_agent: CompiledGraph = create_react_agent(llm,
-                                                       tools=[tool],
-                                                       state_modifier=SystemMessage("you are a super executione tool and you interact with "
-                                                                                    f"the following tool and assert it gives good results {tool.description}" ))
-    react_agent.name = name
-    result = react_agent.invoke(state)["messages"][-1].content
-    return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
+    def process(self, state: MessagesState) -> Command[Literal["supervisor"]]:
+        result = self.agent.invoke(state)["messages"][-1].content
+        return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
 
+retriver_agent = ToolAgent(retriever_tool, "data_retriever_agent")
+coder_agent = ToolAgent(rand_gen, "python_functions_agent")
+torrent_agent = ToolAgent(torrent_info_tool, "torrent_download_client_agent")
 
 def retriver_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return create_node(retriever_tool,
-                       state,
-                       "data_retriever_agent")
-
+    return retriver_agent.process(state)
 
 def coder_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return create_node(rand_gen,
-                       state,
-                       "python_functions_agent")
-
+    return coder_agent.process(state)
 
 def torrent_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return create_node(torrent_info_tool,
-                       state,
-                       "torrent_download_client_agent")
-
-
-data_retriever_agent: CompiledGraph = create_react_agent(llm,
-                                                   tools=[retriever_tool],
-                                                   state_modifier=SystemMessage(
-                                                       "you are a super executione tool and you interact with "
-                                                       f"the following tool and assert it gives good results {retriever_tool.description}"))
-data_retriever_agent.name = "data_retriever_agent"
-
+    return torrent_agent.process(state)
 
 if __name__ == '__main__':
     retriver_node({"messages": "recommend 3 comedy movies"}).update["messages"][-1].pretty_print()

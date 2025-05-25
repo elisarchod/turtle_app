@@ -6,8 +6,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.constants import END
-from langgraph.graph import MessagesState
 from langgraph.types import Command
+
+from turtleapp.workflows.state import MessagesState
 
 from dotenv import load_dotenv
 
@@ -26,8 +27,10 @@ class SupervisorNodeCreator:
         self.members = members
     def __call__(self, state: MessagesState) -> Command[Union[str]]:
         """An LLM-based router."""
-        message_with_prompt = hub_prompt.invoke({"human_request": state["messages"],
-                                                 "members": self.members})
+        message_with_prompt = hub_prompt.invoke({
+            "human_request": state["messages"],
+            "members": self.members
+        })
 
         response = self.llm.with_structured_output(Router).invoke(message_with_prompt)
         goto = response["next"]
