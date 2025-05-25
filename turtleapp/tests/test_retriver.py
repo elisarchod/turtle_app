@@ -5,6 +5,8 @@ from langchain import hub
 from langchain_openai import ChatOpenAI
 from langsmith.schemas import Example, Run
 
+from turtleapp.src.utils.log_handler import logger
+
 load_dotenv(override=True)
 from turtleapp.src.nodes.agents import retriver_node
 
@@ -75,4 +77,4 @@ def answer_hallucination_grader(root_run: Run, example: Example) -> dict:
 
 if __name__ == "__main__":
     response = retriver_node({"messages": "recommend 3 comedy movies"})
-    print(response)
+    logger.info(response)
