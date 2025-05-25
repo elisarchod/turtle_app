@@ -11,7 +11,7 @@ from turtleapp.config.settings import agent_model
 from turtleapp.core.agents.base import BaseAgent
 from turtleapp.src.tools.random_number_gen import rand_gen
 from turtleapp.src.tools.retriver_movie_summeries import retriever_tool
-from .tools.tools_torrent import torrent_info_tool
+from turtleapp.src.tools.tools_torrent import torrent_info_tool
 
 class ToolAgent(BaseAgent):
     def __init__(self, tool: Tool, name: str):
@@ -31,18 +31,14 @@ class ToolAgent(BaseAgent):
         result = self.agent.invoke(state)["messages"][-1].content
         return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
 
-retriver_agent = ToolAgent(retriever_tool, "data_retriever_agent")
-coder_agent = ToolAgent(rand_gen, "python_functions_agent")
-torrent_agent = ToolAgent(torrent_info_tool, "torrent_download_client_agent")
-
 def retriver_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return retriver_agent.process(state)
+    return ToolAgent(retriever_tool, "data_retriever_agent").process(state)
 
 def coder_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return coder_agent.process(state)
+    return ToolAgent(rand_gen, "python_functions_agent").process(state)
 
 def torrent_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    return torrent_agent.process(state)
+    return ToolAgent(torrent_info_tool, "torrent_download_client_agent").process(state)
 
 if __name__ == '__main__':
     retriver_node({"messages": "recommend 3 comedy movies"}).update["messages"][-1].pretty_print()

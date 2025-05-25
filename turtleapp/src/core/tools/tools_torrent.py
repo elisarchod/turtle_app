@@ -18,6 +18,7 @@ curl -i --header 'Referer: http://192.168.1.250:15080' --data 'username=admin&pa
 
 """
 
+import time
 from typing import Literal, Tuple, Any, Dict, List
 import requests
 from langchain.tools import BaseTool
@@ -36,6 +37,12 @@ URL = f"{IP_ADDRESS}/api/v2"
 #     plugins='all',
 #     category='all') >> > client.search_stop(search_id=search_job.id) >> >  # or
 # >> > search_job.stop()
+
+url = f"{URL}/search/start"
+url = f"{URL}/torrents/info?filter=downloading"
+headers = {'Referer': IP_ADDRESS}
+requests.post(url, headers=headers, data=CREDENTIALS)#.json()
+
 
 
 
@@ -56,6 +63,15 @@ def get_torrnts_info() -> List[Dict[str, Any]]:
     torrents = get_torrents_info('/torrents/info?filter=downloading')
     processed_torrents = list(map(beutify_torrent_details, torrents))
     return processed_torrents
+
+def search_torrents(query: str) -> List[Dict[str, Any]]:
+    headers = {'Referer': IP_ADDRESS}
+    response_start = requests.post(f"{URL}/search/start", headers=headers, data=CREDENTIALS)
+    response_start.raise_for_status() 
+    time.sleep(30)
+    response_results = requests.post(f"{URL}/search/results", headers=headers, data=CREDENTIALS)
+    response_results.raise_for_status()
+    return response_results.json()
 
 class TorrentClientTool(BaseTool):
     name: str = "torrent_local_client_tool"

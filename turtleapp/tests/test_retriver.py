@@ -3,9 +3,8 @@ from typing import Dict
 from dotenv import load_dotenv
 from langchain import hub
 from langchain_openai import ChatOpenAI
-from langsmith import Client
 from langsmith.schemas import Example, Run
-from langsmith import evaluate
+
 load_dotenv(override=True)
 from turtleapp.src.nodes.agents import retriver_node
 
@@ -74,18 +73,6 @@ def answer_hallucination_grader(root_run: Run, example: Example) -> dict:
     score = score["Score"]
     return {"key": "answer_hallucination", "score": score}
 
-if __name__ == "__main__": # document_relevance_grader
-    experiment_results = evaluate(predict_rag_answer,
-                                  data=EVALSET_NAME,
-                                  evaluators=[document_relevance_grader,
-                                              answer_hallucination_grader
-                                      ]
-                                      )
-
-        # response = retriver_node({"messages": "recommend 3 comedy movies"})
-        # response.update['messages'][-1].pretty_print()
-        # pp = response.update['messages'][-1]
-        # client = Client()
-        # list(client.list_datasets())
-        # example = list(client.list_examples(dataset_name=EVALSET_NAME))[0]
-        # example.inputs  # example
+if __name__ == "__main__":
+    response = retriver_node({"messages": "recommend 3 comedy movies"})
+    print(response)
