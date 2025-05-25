@@ -2,7 +2,7 @@
 # Home Theater Personal Assistant
 
 This project is a personal home theater assistant leveraging Large Language Models (LLMs) and LangChain, designed to interact with various services on my local network (running Docker Compose [repo](https://github.com/Elisarchod/stack/blob/main/archie/media-compose.yml))
-The system helps to manage my local movies library, and can accese summeries of other existing movies or call a service to download this movies to my local library
+The system helps to manage my local movies library, and can accese summeries of other existing movies or call a local service to download a movie to my local library
 
 ## Overview
 
