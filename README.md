@@ -4,29 +4,37 @@
 This project is a personal home theater assistant leveraging Large Language Models (LLMs) and LangChain, designed to interact with various services on my local network (running Docker Compose [repo](https://github.com/Elisarchod/stack/blob/main/archie/media-compose.yml))
 The system helps to manage my local movies library, and can accese summeries of other existing movies or call a local service to download a movie to my local library
 
+
 ## Overview
 
 The application creates an agent that runs locally and can access several tools:
 
-*   **Retrieval Augmented Generation (RAG):** Accesses a Pinecone vector database containing movie details from 2017.
-*   **Python Function Execution:** Runs simple Python functions.
-*   **Torrent Client Interaction:** Communicates with a torrent client (qBittorrent).
 
-The assistant aims to provide a unified interface for managing home theater activities, such as retrieving movie information and controlling torrent downloads.
+* **Retrieval Augmented Generation (RAG):** Accesses a Pinecone vector database containing movie details from 2017.
+* **Python Function Execution:** Runs simple Python functions.
+* **Torrent Client Interaction:** Communicates with a torrent client (qBittorrent).
+
+The assistant aims to provide a unified interface for managing home theater activities, such as retrieving movie
+information and controlling torrent downloads.
 
 ## Architecture
 
 The application is built using LangChain's LangGraph framework, employing a multi-agent supervisor architecture.
 
-*   **Agent:** ReAct agent.
-*   **Features:** Checkpointing, RAG.
-*   **Deployment:** Deployed to LangSmith (example SDK call provided below).  Currently, only the RAG functionality is available on LangSmith.
+* **Agent:** ReAct agent.
+* **Features:** Checkpointing, RAG.
+* **Deployment:** Deployed to LangSmith (example SDK call provided below). Currently, only the RAG functionality is
+  available on LangSmith.
+
 
 ## Usage
 
 ### LangSmith (RAG Only)
 
-The following Python code demonstrates how to interact with the deployed RAG agent on LangSmith to query movie information:
+
+The following Python code demonstrates how to interact with the deployed RAG agent on LangSmith to query movie
+information:
+
 
 ```python
 import os
@@ -47,7 +55,9 @@ question = "tell me the plot of terminator 4 ?"
 config = {"configurable": {"thread_id": "<thread_name>"}} # Replace with a thread ID
 
 ans = client.invoke(input={"messages": question}, config=config)
+
 print(ans)
+
 ````
 
 **Note:**  Remember to replace placeholders like `LANGSMITH_ENDPOINT`, `GRAPH_NAME`, and `thread_id` with your actual values.  Also, ensure you have the necessary environment variables set (e.g., `LANGCHAIN_API_KEY`).
@@ -113,4 +123,5 @@ Movie summary data is sourced from the CMU Movie Summary Corpus ([https://papers
   * python-telegram-bot: [https://github.com/python-telegram-bot/python-telegram-bot?tab=readme-ov-file](https://github.com/python-telegram-bot/python-telegram-bot?tab=readme-ov-file)
 
 <!-- end list -->
+
 
