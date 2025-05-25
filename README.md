@@ -116,12 +116,5 @@ The project includes plans for evaluating and experimenting with:
 
 Movie summary data is sourced from the CMU Movie Summary Corpus ([https://paperswithcode.com/dataset/cmu-movie-summary-corpus](https://paperswithcode.com/dataset/cmu-movie-summary-corpus)).
 
-## Resources
-
-  * LangChain: [https://langchain-ai.github.io/langchain/](https://www.google.com/url?sa=E&source=gmail&q=https://langchain-ai.github.io/langchain/)
-  * LangGraph Multi-Agent Tutorial: [https://langchain-ai.github.io/langgraph/tutorials/multi\_agent/agent\_supervisor/](https://langchain-ai.github.io/langgraph/tutorials/multi_agent/agent_supervisor/)
-  * python-telegram-bot: [https://github.com/python-telegram-bot/python-telegram-bot?tab=readme-ov-file](https://github.com/python-telegram-bot/python-telegram-bot?tab=readme-ov-file)
-
-<!-- end list -->
 
 

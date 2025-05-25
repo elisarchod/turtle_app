@@ -1,6 +1,7 @@
 from random import random
 from typing import List, Tuple
 from langchain_core.tools import BaseTool
+from turtleapp.src.utils.log_handler import logger
 
 class GenerateRandomFloats(BaseTool):
     name: str = "generate_random_floats_tool"
@@ -13,7 +14,7 @@ class GenerateRandomFloats(BaseTool):
         range_ = max_number - min_number
         array = [round(min_number + (range_ * random()), ndigits=self.ndigits) for _ in range(array_size)]
         content = f"Generated {array_size} floats in [{min_number}, {max_number}], rounded to {self.ndigits} decimals, first number {array[0]}."
-        print("look into those marvelus random numbers", array)
+        logger.info(f"Generated random numbers: {array}")
         return array, content
 
 

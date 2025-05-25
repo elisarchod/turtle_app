@@ -2,8 +2,9 @@ import os
 from langchain_core.tools import Tool, create_retriever_tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
+from turtleapp.src.utils.log_handler import logger
 
-from turtleapp.configuration import embedding_model, index_name
+from turtleapp.config.settings import embedding_model, index_name
 
 vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(index_name=index_name,
                                                                             embedding=OpenAIEmbeddings(model=embedding_model))
@@ -15,3 +16,4 @@ retriever_tool: Tool = create_retriever_tool(vector_store.as_retriever(),
 
 if __name__ == '__main__':
     response: str = retriever_tool.invoke({"query": "comedy"})
+    logger.info(response)

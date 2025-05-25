@@ -8,10 +8,10 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
 from turtleapp.config.settings import agent_model
-from turtleapp.core.agents.base import BaseAgent
-from turtleapp.src.tools.random_number_gen import rand_gen
-from turtleapp.src.tools.retriver_movie_summeries import retriever_tool
-from turtleapp.src.tools.tools_torrent import torrent_info_tool
+from turtleapp.src.core.agents.base import BaseAgent
+from turtleapp.src.core.tools.random_number_gen import rand_gen
+from turtleapp.src.core.tools.retriver_movie_summeries import retriever_tool
+from turtleapp.src.core.tools.tools_torrent import torrent_info_tool
 
 class ToolAgent(BaseAgent):
     def __init__(self, tool: Tool, name: str):

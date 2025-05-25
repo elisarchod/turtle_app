@@ -25,6 +25,8 @@ from langchain.tools import BaseTool
 from langchain_core.tools import Tool
 from typing import List, Dict, Any
 import requests
+from turtleapp.src.utils.log_handler import logger
+
 IP_ADDRESS = "http://192.168.1.250:15080"
 CREDENTIALS = {'username': 'admin', 'password': 'adminadmin'}
 URL = f"{IP_ADDRESS}/api/v2"
@@ -79,7 +81,7 @@ class TorrentClientTool(BaseTool):
 
     def _run(self, request_type: Literal["list", "add"] = 'list') -> Tuple[str, List[Dict[str, Any]]]:
         if request_type == 'list':
-            print("*"*100)
+            logger.info("="*100)
         torrents = get_torrents_info()
 
         return processed_torrents

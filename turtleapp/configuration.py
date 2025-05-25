@@ -1,1 +1,0 @@
-from turtleapp.config.settings import embedding_model, index_name 
