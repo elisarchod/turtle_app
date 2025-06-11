@@ -40,7 +40,7 @@ graph LR
         direction TB
         PineconeDB["🗄️ Pinecone DB"]
         QBittorrent["🌀 qBittorrent"]
-        LocalLibrary["📚 Local Library"]
+        NetworkShare["📚 Local Network Share"]
     end
     
     subgraph BackendServices["Backend & Data Sources"]
@@ -57,7 +57,7 @@ graph LR
     
     MovieRetriever --> PineconeDB
     TorrentManager --> QBittorrent
-    LibraryManager --> LocalLibrary
+    LibraryManager --> NetworkShare
     
     CMUCorpus -- "Ingest" --> Embeddings --> PineconeDB
 
