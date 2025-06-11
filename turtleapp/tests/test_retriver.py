@@ -8,7 +8,7 @@ from langsmith.schemas import Example, Run
 from turtleapp.src.utils.log_handler import logger
 
 load_dotenv(override=True)
-from turtleapp.src.nodes.agents import retriver_node
+from turtleapp.src.nodes.agents import retriever_node
 
 EVALSET_NAME = "home_assistant_recommendations"
 
@@ -20,7 +20,7 @@ llm = ChatOpenAI(model="gpt-4-turbo", temperature=0)
 
 def predict_rag_answer(example: Dict[str, str]) -> Dict[str, str]:
     """Use this for answer evaluation"""
-    response = retriver_node(example).update['messages'][-1]
+    response = retriever_node(example).update['messages'][-1]
     return {"output": response.content, "output_context": response}
 
 
@@ -76,5 +76,5 @@ def answer_hallucination_grader(root_run: Run, example: Example) -> dict:
     return {"key": "answer_hallucination", "score": score}
 
 if __name__ == "__main__":
-    response = retriver_node({"messages": "recommend 3 comedy movies"})
+    response = retriever_node({"messages": "recommend 3 comedy movies"})
     logger.info(response)

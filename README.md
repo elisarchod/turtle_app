@@ -1,120 +1,204 @@
+# 🎬 Turtle App - AI-Powered Home Theater Assistant
 
-# Home Theater Personal Assistant
+Every movie night starts the same, you spend hours searching for the perfect film, only to end up watching the same old favorites. **Turtle App is here to change that!**
 
-This project is a personal home theater assistant leveraging Large Language Models (LLMs) and LangChain, designed to interact with various services on my local network (running Docker Compose [repo](https://github.com/Elisarchod/stack/blob/main/archie/media-compose.yml))
-The system helps to manage my local movies library, and can accese summeries of other existing movies or call a local service to download a movie to my local library
+This is a management system that combines Large Language Models (LLMs), Retrieval Augmented Generation (RAG), and multi-agent orchestration to provide a unified interface for managing your personal movie collection, discovering new content, and controlling media downloads.
+
+## 🎯 What Does This Do?
+
+The Turtle App is your personal AI assistant for home theater management. It can:
+
+- **🔍 Answer questions about movies** using a comprehensive database of movie summaries and metadata
+- **💾 Manage your local movie library** by scanning and indexing your collection
+- **⬬ Handle torrent downloads** through integration with qBittorrent
+- **🤖 Maintain conversation context** across multiple interactions
+- **🌐 Deploy as a web service** with both local and cloud deployment options
+
+## 🏗️ Architecture Overview
+
+The system uses a **multi-agent supervisor architecture** built on LangGraph, where specialized agents handle different aspects of home theater management under the coordination of a supervisor agent.
+
+```mermaid
+graph LR
+    %% Define Groups
+    subgraph Input
+        User["🧑 User"]
+    end
+
+    subgraph Orchestration
+        Supervisor["🎯 Supervisor Agent"]
+    end
+
+    subgraph Agents
+        direction TB
+        MovieRetriever["🎬 Movie Retriever"]
+        TorrentManager["⬬ Torrent Manager"]
+        MovieScanner["📁 Movie Scanner"]
+    end
+    
+    subgraph ExternalSystems["External Systems & Data"]
+        direction TB
+        PineconeDB["🗄️ Pinecone DB"]
+        QBittorrent["🌀 qBittorrent"]
+        LocalLibrary["📚 Local Library"]
+    end
+    
+    subgraph BackendServices["Backend & Data Sources"]
+        direction TB
+        LLM["🧠 OpenAI (GPT-4)"]
+        Embeddings["OpenAI Embeddings"]
+        CMUCorpus["💾 CMU Movie Corpus"]
+    end
+
+    %% Define Flow
+    User --> Supervisor --> Agents
+    
+    Agents -- "LLM Calls" --> LLM
+    
+    MovieRetriever --> PineconeDB
+    TorrentManager --> QBittorrent
+    MovieScanner --> LocalLibrary
+    
+    CMUCorpus -- "Ingest" --> Embeddings --> PineconeDB
+
+```
+
+## 🔧 Components Deep Dive
+
+### 🎯 Supervisor Agent
+- **Role**: Central coordinator that routes user requests to appropriate specialized agents
+- **Technology**: GPT-4 with structured output for intelligent routing decisions
+- **Function**: Analyzes user intent and determines which agent should handle the request
+
+### 🎬 Movie Retriever Agent (RAG)
+- **Role**: Answers questions about movies using semantic search
+- **Data Source**: Pinecone vector database with 42,000+ movie summaries from CMU Movie Summary Corpus
+- **Capabilities**:
+  - Movie plot summaries and analysis
+  - Movie recommendations based on genre, cast, or plot similarity
+  - Metadata retrieval (cast, director, year, genre)
+  - Semantic search across movie descriptions
+
+### ⬬ Torrent Manager Agent
+- **Role**: Manages torrent downloads and searches
+- **Integration**: qBittorrent Web API
+- **Capabilities**:
+  - List currently downloading torrents
+  - Search for torrents across multiple providers
+  - Add torrents via magnet links
+  - Monitor download progress
+
+### 📁 Movie Scanner Agent
+- **Role**: Scans and catalogs local movie library
+- **Integration**: Samba/CIFS network shares
+- **Capabilities**:
+  - Scan network shares for movie files
+  - Generate library catalog with file paths
+
+## 💬 Usage Examples
+
+### Movie Information & Recommendations
 
 
-## Overview
-
-The application creates an agent that runs locally and can access several tools:
-
-
-* **Retrieval Augmented Generation (RAG):** Accesses a Pinecone vector database containing movie details from 2017.
-* **Python Function Execution:** Runs simple Python functions.
-* **Torrent Client Interaction:** Communicates with a torrent client (qBittorrent).
-
-The assistant aims to provide a unified interface for managing home theater activities, such as retrieving movie
-information and controlling torrent downloads.
-
-## Architecture
-
-The application is built using LangChain's LangGraph framework, employing a multi-agent supervisor architecture.
-
-* **Agent:** ReAct agent.
-* **Features:** Checkpointing, RAG.
-* **Deployment:** Deployed to LangSmith (example SDK call provided below). Currently, only the RAG functionality is
-  available on LangSmith.
-
-
-## Usage
-
-### LangSmith (RAG Only)
-
-
-The following Python code demonstrates how to interact with the deployed RAG agent on LangSmith to query movie
-information:
-
-
-```python
-import os
-from langgraph.pregel.remote import RemoteGraph
-from langgraph_sdk import get_client
-from langgraph_sdk import get_sync_client
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
-LANGSMITH_ENDPOINT = "[https://ht-frosty-battery-91-26df676ff73856d48624516684b654c1.us.langgraph.app](https://ht-frosty-battery-91-26df676ff73856d48624516684b654c1.us.langgraph.app)" # Replace with your endpoint
-client = get_sync_client(url=LANGSMITH_ENDPOINT, api_key=os.environ["LANGCHAIN_API_KEY"])
-GRAPH_NAME = "home_recommender" # Replace with your graph name
-
-client = RemoteGraph(GRAPH_NAME, api_key=os.environ["LANGCHAIN_API_KEY"], url=LANGSMITH_ENDPOINT)
-
-question = "tell me the plot of terminator 4 ?"
-config = {"configurable": {"thread_id": "<thread_name>"}} # Replace with a thread ID
-
-ans = client.invoke(input={"messages": question}, config=config)
-
-print(ans)
-
-````
-
-**Note:**  Remember to replace placeholders like `LANGSMITH_ENDPOINT`, `GRAPH_NAME`, and `thread_id` with your actual values.  Also, ensure you have the necessary environment variables set (e.g., `LANGCHAIN_API_KEY`).
-
-### Local Deployment (Full Functionality)
-
-Instructions for local deployment and running the full application with all tools will be provided in a future update.  This will likely involve setting up the Docker Compose environment on your Raspberry Pi.
-
-## Functionalities
-
-### Tools
-
-  * **RAG:** Pinecone vector database (`retriever_tool`).
-  * **Torrent Client:** qBittorrent (interaction details based on qBittorrent's documentation).
-  * **Python Execution:**  Ability to run arbitrary Python code.
-
-### Evaluations & Experiments
-
-The project includes plans for evaluating and experimenting with:
-
-  * **RAG:** Hallucination, Relevance, Helpfulness.
-  * **LLM:** Model performance.
-  * **Prompt Management:** Utilizing LangChain Hub for prompt engineering.
-
-### Integrations
-
-  * **Telegram:** Planned integration with a Telegram bot (using `python-telegram-bot`).
-  * **Ollama/Llama:** Planned integration with self-hosted LLMs.
-
-## Current Progress and Future Plans
-
-### Core Functionality
-
-  * [x] Chatbot answers questions about movies.
-  * [x] Conversation history persistence.
-  * [x] Movie recommendations based on user input.
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant S as Supervisor
+  participant MR as Movie Retriever
+  U ->> S: "Tell me about Terminator 2"
+  S ->> MR: Route to Movie Retriever
+  MR ->> MR: Query Vector DB
+  MR ->> S: Return movie plot & details
+  S ->> U: Formatted response with movie info
+```
 
 ### Torrent Management
 
-  * [x] Retrieve current torrent list.
-  * [ ] Find torrents online (requires a dedicated service).
-  * [ ] Find file paths within torrents.
-  * [ ] Download torrent files.
-  * [ ] Play/stream movies.
-  * [ ] Pass torrent links to the API.
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant S as Supervisor
+  participant TM as Torrent Manager
+  U ->> S: "Download The Matrix"
+  S ->> TM: Route to Torrent Manager
+  TM ->> TM: Search for torrents & Select best option
+  TM ->> S: Downloading selected torrent
+  S ->> U: Download started for The Matrix
 
-### Integrations and Enhancements
+```
 
-  * [ ] Telegram bot integration.
-  * [x] Store conversation history in a database.
-  * [ ] Create designated user interaction prompts.
-  * [ ] Integrate self-hosted LLMs (Llama, DeepSeek).
-  * [ ] Token cost optimization.
+### Movie Night Management
 
-## Dataset
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant S as Supervisor
+  participant MR as Movie Retriever
+  participant TM as Torrent Manager
+  participant MS as Movie Scanner
+  U ->> S: "I want to watch Star Wars"
+  S ->> MS: Route to Movie Scanner
+  MS ->> MS: Scan local files
+  MS ->> S: No local file found
+  TM ->> TM: Search for torrents & Select best option
+  TM ->> S: Downloading selected torrent
+  S ->> MR: Find movie similar to Star Wars
+  MR ->> S: Return movie plot & details
+  S ->> MS: Scan local files for similar movie
+  MS ->> MS: Scan local files
+  MS ->> S: Found local file for "Harry Potter"
+  S ->> U: Download started for Inception & Watch Harry Potter in the meantime
 
-Movie summary data is sourced from the CMU Movie Summary Corpus ([https://paperswithcode.com/dataset/cmu-movie-summary-corpus](https://paperswithcode.com/dataset/cmu-movie-summary-corpus)).
+```
 
+## 🛠️ Technology Stack
 
+### Core Framework
 
+- **LangGraph**: Multi-agent orchestration and workflow management
+- **LangChain**: LLM integration and tool chaining
+- **OpenAI GPT-4**: Primary language model for reasoning and responses
+- **Python 3.11+**: Core application runtime
+
+### Data & Storage
+
+- **Pinecone**: Vector database for movie embeddings
+- **OpenAI Embeddings**: Text vectorization for semantic search
+- **Memory Saver**: Conversation persistence and context management
+
+### External Integrations
+
+- **qBittorrent Web API**: Torrent client management
+- **Samba/CIFS**: Network file share access
+- **FastAPI**: RESTful API endpoints (planned)
+
+### Development & Deployment
+
+- **Poetry**: Dependency management and packaging
+- **LangSmith**: Model monitoring and evaluation
+- **Docker**: Containerization for deployment
+
+## 🎯 Current Features & Roadmap
+
+### 🚧 In Development
+
+- **🔄 Enhanced Integration**
+  - [ ] Real-time torrent progress monitoring
+  - [ ] Automatic library refresh after downloads
+  - [ ] Cross-platform media player integration
+  - [ ] Subtitle and metadata management
+
+### 🗺️ Future Roadmap
+
+- **📱 User Interfaces**
+  - [ ] Telegram bot integration for mobile access
+  - [ ] Web-based dashboard with Streamlit
+
+- **🧠 AI Enhancements**
+  - [ ] Self-hosted LLM support (Ollama, DeepSeek R1)
+  - [ ] Multi-modal support (movie posters, trailers)
+  - [ ] Sentiment analysis of user preferences
+
+- **📊 Analytics & Optimization**
+  - [ ] Usage analytics and recommendation improvement
+  - [ ] Token cost optimization strategies

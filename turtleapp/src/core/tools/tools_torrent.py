@@ -19,7 +19,7 @@ import sys
 IP_ADDRESS = os.getenv('QBITTORRENT_HOST')
 CREDENTIALS = {
     'username': os.getenv('QBITTORRENT_USER'),
-    'password': os.getenv('QBITTORRENT_PASS')
+    'password': os.getenv('QBITTORRENT_PASSWORD')
 }
 URL = f"{IP_ADDRESS}/api/v2"
 HEADERS = {'Referer': IP_ADDRESS}
@@ -66,7 +66,7 @@ def add_torrent(magnet_link: str, save_path: str = None) -> bool:
     return response.status_code == 200
 
 class TorrentClientTool(BaseTool):
-    name: str = "torrent_local_client_tool"
+    name: str = "movie_download_client"
     description: str = "Manage torrents: list downloading torrents, search for torrents, add torrents via magnet links"
 
     def _run(self, operation: str = "list", query: str = None, magnet_link: str = None) -> str:
