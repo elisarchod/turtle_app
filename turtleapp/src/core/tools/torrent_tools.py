@@ -15,7 +15,10 @@ HEADERS = {'Referer': QBITORRENT_IP_ADDRESS}
 
 def api_call(endpoint: str, data: dict = None) -> requests.Response:
     """Make API call to qBittorrent."""
-    return requests.post(f"{URL}{endpoint}", headers=HEADERS, data={**data, **QBITORRENT_CREDENTIALS})
+    call_data = QBITORRENT_CREDENTIALS.copy()
+    if data:
+        call_data.update(data)
+    return requests.post(f"{URL}{endpoint}", headers=HEADERS, data=call_data)
 
 def get_downloading_torrents() -> List[Dict[str, Any]]:
     """Get currently downloading torrents."""

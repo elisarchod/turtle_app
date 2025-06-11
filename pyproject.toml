@@ -21,6 +21,7 @@ bs4 = "^0.0.2"
 fastapi = "^0.115.6"
 langgraph-cli = {extras = ["inmem"], version = "^0.1.65"}
 pysmb = "^1.2.9"
+smbprotocol = "^1.15.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.0.0"

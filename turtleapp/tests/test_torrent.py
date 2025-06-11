@@ -28,6 +28,3 @@ class TestTorrentTools(unittest.TestCase):
         result = tool._run("list")
         self.assertIsInstance(result, str)
         self.assertIn("torrents", result.lower())
-
-if __name__ == "__main__":
-    unittest.main() 

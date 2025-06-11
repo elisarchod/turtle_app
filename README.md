@@ -33,7 +33,7 @@ graph LR
         direction TB
         MovieRetriever["🎬 Movie Retriever"]
         TorrentManager["⬬ Torrent Manager"]
-        MovieScanner["📁 Movie Scanner"]
+        LibraryManager["📁 Library Manager"]
     end
     
     subgraph ExternalSystems["External Systems & Data"]
@@ -57,7 +57,7 @@ graph LR
     
     MovieRetriever --> PineconeDB
     TorrentManager --> QBittorrent
-    MovieScanner --> LocalLibrary
+    LibraryManager --> LocalLibrary
     
     CMUCorpus -- "Ingest" --> Embeddings --> PineconeDB
 
@@ -69,6 +69,8 @@ graph LR
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
 - **Technology**: GPT-4 with structured output for intelligent routing decisions
 - **Function**: Analyzes user intent and determines which agent should handle the request
+- **Implementation**: `turtleapp/src/nodes/supervisor.py`
+- **Configuration**: Uses `supervisor_model_name` from environment variables
 
 ### 🎬 Movie Retriever Agent (RAG)
 - **Role**: Answers questions about movies using semantic search
@@ -78,6 +80,8 @@ graph LR
   - Movie recommendations based on genre, cast, or plot similarity
   - Metadata retrieval (cast, director, year, genre)
   - Semantic search across movie descriptions
+- **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
+- **Configuration**: Uses OpenAI embeddings with model specified in environment variables
 
 ### ⬬ Torrent Manager Agent
 - **Role**: Manages torrent downloads and searches
@@ -87,13 +91,27 @@ graph LR
   - Search for torrents across multiple providers
   - Add torrents via magnet links
   - Monitor download progress
+- **Implementation**: `turtleapp/src/core/tools/torrent_tools.py`
+- **Configuration**: Uses qBittorrent credentials from environment variables
+- **Testing**: `turtleapp/tests/test_torrent.py`
 
-### 📁 Movie Scanner Agent
+### 📁 Library Manager Agent
 - **Role**: Scans and catalogs local movie library
 - **Integration**: Samba/CIFS network shares
 - **Capabilities**:
   - Scan network shares for movie files
   - Generate library catalog with file paths
+- **Implementation**: `turtleapp/src/core/tools/library_manager.py`
+- **Configuration**: Uses Samba credentials from environment variables
+- **Testing**: `turtleapp/tests/test_library_manager.py`
+
+### 🔄 Workflow Orchestration
+- **Implementation**: `turtleapp/src/workflows/graph.py`
+- **Technology**: LangGraph for multi-agent orchestration
+- **Components**:
+  - State management using `MessagesState`
+  - Memory persistence with `MemorySaver`
+  - Agent routing and coordination
 
 ## 💬 Usage Examples
 
@@ -135,18 +153,18 @@ sequenceDiagram
   participant S as Supervisor
   participant MR as Movie Retriever
   participant TM as Torrent Manager
-  participant MS as Movie Scanner
+  participant LM as Library Manager
   U ->> S: "I want to watch Star Wars"
-  S ->> MS: Route to Movie Scanner
-  MS ->> MS: Scan local files
-  MS ->> S: No local file found
+  S ->> LM: Route to Library Manager
+  LM ->> LM: Scan local files
+  LM ->> S: No local file found
   TM ->> TM: Search for torrents & Select best option
   TM ->> S: Downloading selected torrent
   S ->> MR: Find movie similar to Star Wars
   MR ->> S: Return movie plot & details
-  S ->> MS: Scan local files for similar movie
-  MS ->> MS: Scan local files
-  MS ->> S: Found local file for "Harry Potter"
+  S ->> LM: Scan local files for similar movie
+  LM ->> LM: Scan local files
+  LM ->> S: Found local file for "Harry Potter"
   S ->> U: Download started for Inception & Watch Harry Potter in the meantime
 
 ```
@@ -175,8 +193,9 @@ sequenceDiagram
 ### Development & Deployment
 
 - **Poetry**: Dependency management and packaging
-- **LangSmith**: Model monitoring, evaluation, promt management
+- **LangSmith**: Model monitoring, evaluation, prompt management
 - **Docker**: Containerization for deployment
+- **Testing**: Combination of unit tests for core functionality and LangSmith monitoring for LLM-based components
 
 ## 🎯 Current Features & Roadmap
 

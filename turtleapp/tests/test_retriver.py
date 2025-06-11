@@ -6,9 +6,10 @@ from langchain_openai import ChatOpenAI
 from langsmith.schemas import Example, Run
 
 from turtleapp.src.utils.log_handler import logger
+from turtleapp.src.nodes.agents import ToolAgent
+from turtleapp.src.core.tools.movie_summaries_retriever import retriever_tool
 
 load_dotenv(override=True)
-from turtleapp.src.nodes.agents import retriever_node
 
 EVALSET_NAME = "home_assistant_recommendations"
 
@@ -17,10 +18,12 @@ grade_prompt_hallucinations = hub.pull("langchain-ai/rag-answer-hallucination")
 grade_prompt_answer_helpfulness = hub.pull("langchain-ai/rag-answer-helpfulness")
 llm = ChatOpenAI(model="gpt-4-turbo", temperature=0)
 
+# Create a singleton instance for testing
+retriever_agent = ToolAgent(retriever_tool)
 
 def predict_rag_answer(example: Dict[str, str]) -> Dict[str, str]:
     """Use this for answer evaluation"""
-    response = retriever_node(example).update['messages'][-1]
+    response = retriever_agent.process(example).update['messages'][-1]
     return {"output": response.content, "output_context": response}
 
 
@@ -76,5 +79,6 @@ def answer_hallucination_grader(root_run: Run, example: Example) -> dict:
     return {"key": "answer_hallucination", "score": score}
 
 if __name__ == "__main__":
-    response = retriever_node({"messages": "recommend 3 comedy movies"})
+    response = retriever_agent.process({"messages": "recommend 3 comedy movies"})
     logger.info(response)
+    print("Retriever agent response:", response)
