@@ -175,7 +175,7 @@ sequenceDiagram
 ### Development & Deployment
 
 - **Poetry**: Dependency management and packaging
-- **LangSmith**: Model monitoring and evaluation
+- **LangSmith**: Model monitoring, evaluation, promt management
 - **Docker**: Containerization for deployment
 
 ## 🎯 Current Features & Roadmap

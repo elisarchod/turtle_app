@@ -11,5 +11,10 @@ vector_db_embedding_model_name = os.environ["EMBEDDINGS_MODEL"]
 
 SERVER = os.getenv('SAMBA_SERVER')
 SHARE = os.getenv('SAMBA_SHARE')
-CREDENTIALS = {
+SAMBA_CREDENTIALS = {
     'user': os.getenv('SAMBA_USER'), 'password': os.getenv('SAMBA_PASSWORD')}
+QBITORRENT_IP_ADDRESS = os.getenv('QBITTORRENT_HOST')
+
+QBITORRENT_CREDENTIALS = {
+    'username': os.getenv('QBITTORRENT_USER'), 'password': os.getenv('QBITTORRENT_PASSWORD')}
+

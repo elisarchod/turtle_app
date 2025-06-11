@@ -23,10 +23,8 @@ set_verbose(True)
 # {"question": "recommend a bollywood movie"},
 # {"question": "recent movies i downloaded in torrent?"}
 
-config = {"configurable": {"thread_id": "gen_int_13"}} # , "run_name": "gen_numbers_test_01"
-
-result: AddableValuesDict = home_agent.invoke({"messages": "tell me the plot of terminator 2 ?"},
-                                              config=config ) #
+config = {"configurable": {"thread_id": "gen_int_13"}}
+result: AddableValuesDict = home_agent.invoke({"messages": "tell me the plot of terminator 2 ?"}, config=config )
 result['messages'][-1].pretty_print()
 
 

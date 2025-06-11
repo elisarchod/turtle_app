@@ -6,10 +6,10 @@ from langgraph.graph import MessagesState
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from turtleapp.config.settings import agent_model_name
+from turtleapp.settings import agent_model_name
 from turtleapp.src.core.agents.base import BaseAgent
-from turtleapp.src.core.tools.retriever_movie_summaries import retriever_tool
-from turtleapp.src.core.tools.tools_torrent import torrent_info_tool
+from turtleapp.src.core.tools.movie_summaries_retriever import retriever_tool
+from turtleapp.src.core.tools.torrent_tools import torrent_info_tool
 from turtleapp.src.core.tools.movie_scanner import movie_scanner_tool
 
 class ToolAgent(BaseAgent):

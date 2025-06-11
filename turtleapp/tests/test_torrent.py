@@ -1,6 +1,6 @@
 import unittest
 
-from turtleapp.src.core.tools.tools_torrent import (
+from turtleapp.src.core.tools.torrent_tools import (
     get_downloading_torrents, 
     TorrentClientTool,
     search_torrents

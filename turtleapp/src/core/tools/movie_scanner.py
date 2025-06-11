@@ -1,13 +1,10 @@
-import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from langchain_core.tools import BaseTool
 
-from turtleapp.config.settings import CREDENTIALS, SERVER, SHARE
+from turtleapp.settings import SAMBA_CREDENTIALS, SERVER, SHARE
 from turtleapp.src.utils.log_handler import logger
-
-
-
 
 # Movie file extensions
 MOVIE_EXTENSIONS = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg'}
@@ -47,7 +44,7 @@ def get_movies() -> List[Dict[str, Any]]:
     try:
         from smb.SMBConnection import SMBConnection
         
-        conn = SMBConnection(CREDENTIALS['user'], CREDENTIALS['password'], "client", SERVER, use_ntlm_v2=True)
+        conn = SMBConnection(SAMBA_CREDENTIALS['user'], SAMBA_CREDENTIALS['password'], "client", SERVER, use_ntlm_v2=True)
         if not conn.connect(SERVER, 445):
             return [{'name': 'Error', 'path': 'Failed to connect to Samba server'}]
         
@@ -63,7 +60,7 @@ def get_movies() -> List[Dict[str, Any]]:
 class MovieScannerTool(BaseTool):
     
     name: str = "movie_scanner"
-    description: str = "list of available movies"
+    description: str = "list of available movies, this is the only source of movies i want to use"
 
     def _run(self) -> List[Dict[str, Any]]:
         """Scan for movies and return results."""

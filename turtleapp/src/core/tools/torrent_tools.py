@@ -1,35 +1,21 @@
-"""
-qBittorrent Web API integration for torrent management.
-
-Example curl commands for qBittorrent:
-- Login: curl -i --header 'Referer: $QBITTORRENT_HOST' --data 'username=$QBITTORRENT_USER&password=$QBITTORRENT_PASS' $QBITTORRENT_HOST/api/v2/auth/login
-- Get downloads: curl -i --header 'Referer: $QBITTORRENT_HOST' --data 'username=$QBITTORRENT_USER&password=$QBITTORRENT_PASS' $QBITTORRENT_HOST/api/v2/torrents/info?filter=downloading
-"""
-
-import os
 import time
 import requests
 from langchain.tools import BaseTool
 from langchain_core.tools import Tool
 from typing import List, Dict, Any
+
+from turtleapp.settings import QBITORRENT_CREDENTIALS, QBITORRENT_IP_ADDRESS
 from turtleapp.src.utils.log_handler import logger
 import sys
 
 # Configuration with environment variable support
-IP_ADDRESS = os.getenv('QBITTORRENT_HOST')
-CREDENTIALS = {
-    'username': os.getenv('QBITTORRENT_USER'),
-    'password': os.getenv('QBITTORRENT_PASSWORD')
-}
-URL = f"{IP_ADDRESS}/api/v2"
-HEADERS = {'Referer': IP_ADDRESS}
+
+URL = f"{QBITORRENT_IP_ADDRESS}/api/v2"
+HEADERS = {'Referer': QBITORRENT_IP_ADDRESS}
 
 def api_call(endpoint: str, data: dict = None) -> requests.Response:
     """Make API call to qBittorrent."""
-    call_data = CREDENTIALS.copy()
-    if data:
-        call_data.update(data)
-    return requests.post(f"{URL}{endpoint}", headers=HEADERS, data=call_data)
+    return requests.post(f"{URL}{endpoint}", headers=HEADERS, data={**data, **QBITORRENT_CREDENTIALS})
 
 def get_downloading_torrents() -> List[Dict[str, Any]]:
     """Get currently downloading torrents."""
@@ -102,6 +88,6 @@ if __name__ == "__main__":
         results = search_torrents(query)
         print(f"Search results: {results}")
     else:
-        print("Usage: python tools_torrent.py 'search query'")
+        print("Usage: python torrent_tools.py 'search query'")
         torrents = get_downloading_torrents()
         print(f"Current downloads: {torrents}")
