@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from langgraph.pregel.io import AddableValuesDict
 from langchain.globals import set_verbose
 
-from turtleapp.graph import home_agent
+from turtleapp.src.workflows.graph import home_agent
 
 load_dotenv(override=True)
 set_verbose(True)

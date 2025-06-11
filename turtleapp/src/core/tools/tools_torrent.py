@@ -1,97 +1,107 @@
 """
-example for qbitoorent sucket
+qBittorrent Web API integration for torrent management.
 
-curl -i --header 'Referer: http://192.168.1.250:15080' --data 'username=admin&password=adminadmin' http://192.168.1.250:15080/api/v2/auth/login
-
-
- get downloads
-# curl -i --header 'Referer: http://192.168.1.250:15080' --data 'username=admin&password=adminadmin' http://192.168.1.250:15080/api/v2/torrents/info?filter=downloading
-
-example for qbitoorent sucket
-
-curl -i --header 'Referer: http://192.168.1.250:15080' --data 'username=admin&password=adminadmin' http://192.168.1.250:15080/api/v2/auth/login
-
-
- get downloads
-# curl -i --header 'Referer: http://192.168.1.250:15080' --data 'username=admin&password=adminadmin' http://192.168.1.250:15080/api/v2/torrents/info?filter=downloading
-
-
+Example curl commands for qBittorrent:
+- Login: curl -i --header 'Referer: $QBITTORRENT_HOST' --data 'username=$QBITTORRENT_USER&password=$QBITTORRENT_PASS' $QBITTORRENT_HOST/api/v2/auth/login
+- Get downloads: curl -i --header 'Referer: $QBITTORRENT_HOST' --data 'username=$QBITTORRENT_USER&password=$QBITTORRENT_PASS' $QBITTORRENT_HOST/api/v2/torrents/info?filter=downloading
 """
 
+import os
 import time
-from typing import Literal, Tuple, Any, Dict, List
 import requests
 from langchain.tools import BaseTool
 from langchain_core.tools import Tool
 from typing import List, Dict, Any
-import requests
 from turtleapp.src.utils.log_handler import logger
+import sys
 
-IP_ADDRESS = "http://192.168.1.250:15080"
-CREDENTIALS = {'username': 'admin', 'password': 'adminadmin'}
+# Configuration with environment variable support
+IP_ADDRESS = os.getenv('QBITTORRENT_HOST')
+CREDENTIALS = {
+    'username': os.getenv('QBITTORRENT_USER'),
+    'password': os.getenv('QBITTORRENT_PASS')
+}
 URL = f"{IP_ADDRESS}/api/v2"
+HEADERS = {'Referer': IP_ADDRESS}
 
-#
-# >> > from qbittorrentapi import Client >> > client = Client(host='localhost:8080',
-#                                                             username='admin',
-#                                                             password='adminadmin') >> > search_job = client.search_start(
-#     pattern='Ubuntu',
-#     plugins='all',
-#     category='all') >> > client.search_stop(search_id=search_job.id) >> >  # or
-# >> > search_job.stop()
+def api_call(endpoint: str, data: dict = None) -> requests.Response:
+    """Make API call to qBittorrent."""
+    call_data = CREDENTIALS.copy()
+    if data:
+        call_data.update(data)
+    return requests.post(f"{URL}{endpoint}", headers=HEADERS, data=call_data)
 
-url = f"{URL}/search/start"
-url = f"{URL}/torrents/info?filter=downloading"
-headers = {'Referer': IP_ADDRESS}
-requests.post(url, headers=headers, data=CREDENTIALS)#.json()
-
-
-
-
-def get_torrents_info(call: str) -> List[Dict[str, Any]]:
-    url = f"{URL}{call}"
-    headers = {'Referer': IP_ADDRESS}
-    response = requests.post(url, headers=headers, data=CREDENTIALS)
-    response.raise_for_status()  # Ensure HTTP errors are raised
-    return response.json()
-
-def beutify_torrent_details(torrent_details):
-    return {
-        "content_path": torrent_details.get('content_path', ''),
-        "name": torrent_details.get('name', ''),
-        "progress": torrent_details.get('progress', 0.0)}
-
-def get_torrnts_info() -> List[Dict[str, Any]]:
-    torrents = get_torrents_info('/torrents/info?filter=downloading')
-    processed_torrents = list(map(beutify_torrent_details, torrents))
-    return processed_torrents
+def get_downloading_torrents() -> List[Dict[str, Any]]:
+    """Get currently downloading torrents."""
+    response = api_call('/torrents/info?filter=downloading')
+    response.raise_for_status()
+    torrents = response.json()
+    
+    return [{
+        "name": t.get('name', ''),
+        "content_path": t.get('content_path', ''),
+        "progress": t.get('progress', 0.0)
+    } for t in torrents]
 
 def search_torrents(query: str) -> List[Dict[str, Any]]:
-    headers = {'Referer': IP_ADDRESS}
-    response_start = requests.post(f"{URL}/search/start", headers=headers, data=CREDENTIALS)
-    response_start.raise_for_status() 
-    time.sleep(30)
-    response_results = requests.post(f"{URL}/search/results", headers=headers, data=CREDENTIALS)
-    response_results.raise_for_status()
-    return response_results.json()
+    """Search for torrents."""
+    response = api_call('/search/start', {'pattern': query, 'plugins': 'all', 'category': 'all'})
+    response.raise_for_status()
+    search_id = response.json()['id']
+    time.sleep(5)  
+    response = api_call('/search/results', {'search_id': search_id})
+    
+    if response.status_code == 200:
+        return response.json().get('results', [])
+    else:
+        return [{'fileName': f'Search started for "{query}" but results API has limitations'}]
+
+def add_torrent(magnet_link: str, save_path: str = None) -> bool:
+    """Add torrent via magnet link."""
+    data = {'urls': magnet_link}
+    if save_path:
+        data['savepath'] = save_path
+    
+    response = api_call('/torrents/add', data)
+    return response.status_code == 200
 
 class TorrentClientTool(BaseTool):
     name: str = "torrent_local_client_tool"
-    description: str = "Retrieve information about currently downloading torrents in my local network"
+    description: str = "Manage torrents: list downloading torrents, search for torrents, add torrents via magnet links"
 
-    def _run(self, request_type: Literal["list", "add"] = 'list') -> Tuple[str, List[Dict[str, Any]]]:
-        if request_type == 'list':
-            logger.info("="*100)
-        torrents = get_torrents_info()
-
-        return processed_torrents
+    def _run(self, operation: str = "list", query: str = None, magnet_link: str = None) -> str:
+        try:
+            if operation == "list":
+                torrents = get_downloading_torrents()
+                return f"Found {len(torrents)} downloading torrents: {torrents}"
+            
+            elif operation == "search":
+                if not query:
+                    return "Error: query required for search"
+                results = search_torrents(query)
+                return f"Found {len(results)} results for '{query}': {results}"
+            
+            elif operation == "add":
+                if not magnet_link:
+                    return "Error: magnet_link required for add"
+                success = add_torrent(magnet_link)
+                return f"Torrent {'added successfully' if success else 'failed to add'}"
+            
+            else:
+                return f"Error: Unknown operation '{operation}'. Use: list, search, add"
+                
+        except Exception as e:
+            logger.error(f"Torrent operation failed: {e}")
+            return f"Error: {str(e)}"
 
 torrent_info_tool: Tool = TorrentClientTool()
 
 if __name__ == "__main__":
-    torrent_info_tool.invoke({
-        "name": "torrent_local_client_tool",
-        "args": {},
-        "id":   "123",
-        "type": "tool_call", }
-        )
+    if len(sys.argv) > 1:
+        query = " ".join(sys.argv[1:])
+        results = search_torrents(query)
+        print(f"Search results: {results}")
+    else:
+        print("Usage: python tools_torrent.py 'search query'")
+        torrents = get_downloading_torrents()
+        print(f"Current downloads: {torrents}")

@@ -1,7 +1,7 @@
 "https://langchain-ai.github.io/langgraph/how-tos/react-agent-from-scratch/?h=create+agent+react#define-nodes-and-edges"
 
 from typing import Literal
-from langgraph.graph.message import MessagesState
+from langgraph.graph import MessagesState
 
 import json
 from langchain_core.messages import ToolMessage, SystemMessage
