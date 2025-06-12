@@ -70,7 +70,6 @@ graph LR
 - **Technology**: GPT-4 with structured output for intelligent routing decisions
 - **Function**: Analyzes user intent and determines which agent should handle the request
 - **Implementation**: `turtleapp/src/nodes/supervisor.py`
-- **Configuration**: Uses `supervisor_model_name` from environment variables
 
 ### 🎬 Movie Retriever Agent (RAG)
 - **Role**: Answers questions about movies using semantic search
@@ -81,7 +80,7 @@ graph LR
   - Metadata retrieval (cast, director, year, genre)
   - Semantic search across movie descriptions
 - **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
-- **Configuration**: Uses OpenAI embeddings with model specified in environment variables
+- **Testing**: `turtleapp/tests/test_retriever.py`
 
 ### ⬬ Torrent Manager Agent
 - **Role**: Manages torrent downloads and searches
@@ -92,7 +91,6 @@ graph LR
   - Add torrents via magnet links
   - Monitor download progress
 - **Implementation**: `turtleapp/src/core/tools/torrent_tools.py`
-- **Configuration**: Uses qBittorrent credentials from environment variables
 - **Testing**: `turtleapp/tests/test_torrent.py`
 
 ### 📁 Library Manager Agent
@@ -102,7 +100,6 @@ graph LR
   - Scan network shares for movie files
   - Generate library catalog with file paths
 - **Implementation**: `turtleapp/src/core/tools/library_manager.py`
-- **Configuration**: Uses Samba credentials from environment variables
 - **Testing**: `turtleapp/tests/test_library_manager.py`
 
 ### 🔄 Workflow Orchestration
