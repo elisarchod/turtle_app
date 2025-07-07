@@ -10,21 +10,16 @@ from langchain_pinecone import PineconeVectorStore
 from pinecone import Index, Pinecone, ServerlessSpec
 import time
 
-from ..config import (
-    PINECONE_API_KEY,
-    PINECONE_INDEX_NAME,
-    OPENAI_EMBEDDING_MODEL,
-    PROCESSED_DATA_DIR
-)
+from turtleapp.settings import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class PineconeUploader:
-    def __init__(self, index_name: str = PINECONE_INDEX_NAME, embedding_model: str = OPENAI_EMBEDDING_MODEL):
+    def __init__(self, index_name: str = settings.pinecone.index_name, embedding_model: str = settings.openai.embedding_model):
         self.index_name = index_name
         self.embedding_model = embedding_model
-        self.pinecone_api_key = PINECONE_API_KEY
+        self.pinecone_api_key = settings.pinecone.api_key
         
         self.pc = Pinecone(api_key=self.pinecone_api_key)
         self._initialize_index()
@@ -39,7 +34,7 @@ class PineconeUploader:
                 name=self.index_name,
                 dimension=3072,
                 metric="cosine",
-                spec=ServerlessSpec(cloud="aws", region="us-east-1")
+                spec=ServerlessSpec(cloud="aws", region=settings.pinecone.environment)
             )
             while not self.pc.describe_index(self.index_name).status["ready"]:
                 time.sleep(1)
@@ -84,7 +79,7 @@ class PineconeUploader:
 def main():
     try:
         uploader = PineconeUploader()
-        documents = uploader.load_documents(PROCESSED_DATA_DIR / "plot_summaries_sample.csv")
+        documents = uploader.load_documents(settings.data.processed_dir / "plot_summaries_sample.csv")
         uploader.upload_documents(documents)
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}")
@@ -92,5 +87,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

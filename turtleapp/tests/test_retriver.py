@@ -7,7 +7,7 @@ from langsmith.schemas import Example, Run
 
 from turtleapp.src.utils.log_handler import logger
 from turtleapp.src.nodes.agents import ToolAgent
-from turtleapp.src.core.tools.movie_summaries_retriever import retriever_tool
+from turtleapp.src.core.tools import retriever_tool
 
 load_dotenv(override=True)
 
@@ -41,44 +41,95 @@ def document_relevance_grader(root_run: Run, example: Example) -> dict:
     """
     A simple evaluator that checks to see if retrieved documents are relevant to the question
     """
+    try:
+        # Get specific steps in our RAG pipeline
+        names = ["data_retriever_agent", "tools", "movie_plots_tool"]
+        inner_retrieve_run = get_nested_run_by_names(root_run.child_runs, names)[0]
+        
+        # Get documents and question
+        documents = inner_retrieve_run.outputs.get("documents", [])
+        if not documents:
+            return {"key": "document_relevance", "score": 0, "error": "No documents retrieved"}
+            
+        contexts = "\n\n".join([doc.page_content for doc in documents])
+        input_question = example.inputs["messages"]
 
-    # Get specific steps in our RAG pipeline, which are noted with @traceable decorator
-    names = ["data_retriever_agent", "tools", "movie_plots_tool"]
-    inner_retrieve_run = get_nested_run_by_names(root_run.child_runs, names)[0]
-    contexts = "\n\n".join([document.page_content for document in
-                               inner_retrieve_run.outputs["documents"]])
-    input_question = example.inputs["messages"]
-
-    # grade
-    answer_grader = grade_prompt_doc_relevance | llm
-    score = answer_grader.invoke({"question": input_question, "documents": contexts})
-    score = score["Score"]
-    return {"key": "document_relevance", "score": score}
+        # Grade using the prompt
+        answer_grader = grade_prompt_doc_relevance | llm
+        score = answer_grader.invoke({"question": input_question, "documents": contexts})
+        
+        return {"key": "document_relevance", "score": score["Score"]}
+    except Exception as e:
+        logger.error(f"Error in document relevance grading: {str(e)}")
+        return {"key": "document_relevance", "score": 0, "error": str(e)}
 
 
 def answer_hallucination_grader(root_run: Run, example: Example) -> dict:
     """
-    A simple evaluator that checks to see the answer is grounded in the documents
+    A simple evaluator that checks to see if the answer is grounded in the documents
     """
+    try:
+        # Get documents and prediction
+        names = ["data_retriever_agent", "tools", "movie_plots_tool"]
+        inner_retrieve_run = get_nested_run_by_names(root_run.child_runs, names)[0]
+        
+        documents = inner_retrieve_run.outputs.get("documents", [])
+        if not documents:
+            return {"key": "answer_hallucination", "score": 0, "error": "No documents retrieved"}
+            
+        contexts = "\n\n".join([doc.page_content for doc in documents])
+        prediction = root_run.outputs["output"]
 
-    # RAG input
-    # rag_pipeline_run = get_run_by_name(root_run.child_runs, "data_retriever_agent")
-    # tool_run = get_run_by_name(rag_pipeline_run.child_runs, "tools")
-    # retrieve_run = get_run_by_name(tool_run.child_runs, "movie_plots_store")
-    # inner_retrieve_run = get_run_by_name(retrieve_run.child_runs, "VectorStoreRetriever")
-
-    names = ["data_retriever_agent", "tools", "movie_plots_tool"]
-    inner_retrieve_run = get_nested_run_by_names(root_run.child_runs, names)[0]
-    contexts = "\n\n".join([document.page_content for document in inner_retrieve_run.outputs["documents"]])
-    prediction = root_run.outputs["output"]
-
-    # grader
-    answer_grader = grade_prompt_hallucinations | llm
-    score = answer_grader.invoke({"student_answer": prediction, "documents": contexts})
-    score = score["Score"]
-    return {"key": "answer_hallucination", "score": score}
+        # Grade using the prompt
+        answer_grader = grade_prompt_hallucinations | llm
+        score = answer_grader.invoke({"student_answer": prediction, "documents": contexts})
+        
+        return {"key": "answer_hallucination", "score": score["Score"]}
+    except Exception as e:
+        logger.error(f"Error in answer hallucination grading: {str(e)}")
+        return {"key": "answer_hallucination", "score": 0, "error": str(e)}
 
 if __name__ == "__main__":
-    response = retriever_agent.process({"messages": "recommend 3 comedy movies"})
-    logger.info(response)
-    print("Retriever agent response:", response)
+    # Test query
+    test_query = {"messages": "recommend 3 comedy movies"}
+    
+    # Get response from retriever
+    response = retriever_agent.process(test_query)
+    logger.info("Retriever agent response:", response)
+    
+    # Create a mock Example object for evaluation
+    example = Example(
+        inputs=test_query,
+        outputs={"output": response.update['messages'][-1].content}
+    )
+    
+    # Create a mock Run object with the necessary structure
+    mock_run = Run(
+        name="test_run",
+        inputs=test_query,
+        outputs={"output": response.update['messages'][-1].content},
+        child_runs=[
+            Run(
+                name="data_retriever_agent",
+                child_runs=[
+                    Run(
+                        name="tools",
+                        child_runs=[
+                            Run(
+                                name="movie_plots_tool",
+                                outputs={"documents": response.update['messages'][-1].additional_kwargs.get("documents", [])}
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+    )
+    
+    # Test document relevance
+    relevance_score = document_relevance_grader(mock_run, example)
+    logger.info(f"Document Relevance Score: {relevance_score}")
+    
+    # Test answer hallucination
+    hallucination_score = answer_hallucination_grader(mock_run, example)
+    logger.info(f"Answer Hallucination Score: {hallucination_score}")

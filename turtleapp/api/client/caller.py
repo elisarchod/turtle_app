@@ -6,8 +6,6 @@ from langgraph_sdk import get_sync_client
 
 load_dotenv(override=True)
 
-
-
 LANGSMITH_ENDPOINT=os.environ.get("LANGSMITH_ENDPOINT")
 client = get_sync_client(url=LANGSMITH_ENDPOINT, api_key=os.environ["LANGCHAIN_API_KEY"])
 GRAPH_NAME = "home_recommender"
@@ -22,10 +20,3 @@ config = {"configurable": {"thread_id": "<thread_name>"}}
 
 ans = client.invoke(input={"messages": question},
                     config=config)
-
-
-
-
-
-
-

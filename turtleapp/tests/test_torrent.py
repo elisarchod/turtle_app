@@ -14,7 +14,7 @@ class TestTorrentTools(unittest.TestCase):
         self.assertIsInstance(torrents, list)
         if torrents:  # If we have torrents, check structure
             self.assertIn('name', torrents[0])
-            self.assertIn('progress', torrents[0])
+            self.assertIn('prog ress', torrents[0])
 
     def test_search_torrents(self):
         """Test torrent search"""

@@ -6,12 +6,12 @@ from langgraph.graph import MessagesState
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from turtleapp.settings import agent_model_name
+from turtleapp.settings import settings
 from turtleapp.src.core.agents.base import BaseAgent
 
 class ToolAgent(BaseAgent):
     def __init__(self, tool: Tool):
-        super().__init__(ChatOpenAI(temperature=0, model=agent_model_name))
+        super().__init__(ChatOpenAI(temperature=0, model=settings.openai.embedding_model))
         self.tool = tool
         self.name = f"{tool.name}_agent"
         self.agent = create_react_agent(

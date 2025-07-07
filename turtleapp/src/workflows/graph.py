@@ -4,19 +4,15 @@ from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from turtleapp.settings import supervisor_model_name
+from turtleapp.settings import settings
 from turtleapp.src.nodes.agents import ToolAgent
 from turtleapp.src.nodes.supervisor import SupervisorNodeCreator
-from turtleapp.src.core.tools.movie_summaries_retriever import retriever_tool
-from turtleapp.src.core.tools.torrent_tools import torrent_info_tool
-from turtleapp.src.core.tools.library_manager import library_manager_tool
+from turtleapp.src.core.tools import retriever_tool, torrent_info_tool, library_manager_tool
 
 
 class MovieWorkflowGraph:
-    def __init__(self, supervisor_model_name: str = supervisor_model_name):
+    def __init__(self, supervisor_model_name: str = settings.openai.embedding_model):
         self.supervisor_llm = ChatOpenAI(temperature=0, model=supervisor_model_name)
-        
-        # Create ToolAgent instances directly
         self.nodes = {
             retriever_tool.name: ToolAgent(retriever_tool),
             torrent_info_tool.name: ToolAgent(torrent_info_tool),

@@ -8,7 +8,6 @@ from turtleapp.src.core.tools.library_manager import LibraryManagerTool
 class TestLibraryManager(unittest.TestCase):
 
     def setUp(self):
-        """Set up the test case"""
         self.tool = LibraryManagerTool()
 
     def test_interface(self):

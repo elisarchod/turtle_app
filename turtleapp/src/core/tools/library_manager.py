@@ -3,21 +3,12 @@ from typing import Any, Dict, List
 
 from langchain_core.tools import BaseTool
 
-from turtleapp.settings import SMB_PASSWORD, SMB_SERVER_IP, SMB_SHARE_PATH, SMB_USERNAME
+from turtleapp.settings import settings
 from turtleapp.src.utils.log_handler import logger
 
 import os
 import re
-# import smbprotocol.exceptions
 import smbclient as smb_client
-
-# smb_client.register_session(SMB_SERVER_IP, username=SMB_USERNAME, password=SMB_PASSWORD)
-#
-#
-# smb_client.listdir(SMB_SHARE_PATH)  # Ensure the share is accessible
-# [i for i in smb_client.walk(SMB_SHARE_PATH)]
-#
-
 
 
 def _clean_movie_name(filename):
@@ -44,10 +35,10 @@ def _find_movies_on_share(share_path, server_ip, username, password):
     return movie_dict
 
 def get_movie_library():
-    return _find_movies_on_share(share_path=SMB_SHARE_PATH,
-                                 server_ip=SMB_SERVER_IP,
-                                 username=SMB_USERNAME,
-                                 password=SMB_PASSWORD)
+    return _find_movies_on_share(share_path=settings.smb.share_path,
+                                 server_ip=settings.smb.server,
+                                 username=settings.smb.username,
+                                 password=settings.smb.password)
 
 
 class LibraryManagerTool(BaseTool):
@@ -55,9 +46,8 @@ class LibraryManagerTool(BaseTool):
     description: str = "Scans and catalogs the local movie library"
 
     def _run(self) -> List[Dict[str, Any]]:
-        """Scan for movies and return results."""
         movies_paths = get_movie_library()
-        logger.info(f"Found {len(movies)} movies: {movies}")
+        logger.info(f"Found {len(movies_paths)} movies: {movies_paths}")
         return movies_paths
 
 library_manager_tool = LibraryManagerTool()
