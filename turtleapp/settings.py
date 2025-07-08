@@ -9,7 +9,6 @@ load_dotenv(override=True)
 
 
 class BaseAppSettings(BaseSettings):
-    """Base settings class with common configuration"""
     
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -85,17 +84,14 @@ class QBittorrentSettings(BaseAppSettings):
 
 
 class Settings(BaseAppSettings):
-    # Model configuration
     supervisor_model: str = Field(alias="SUPERVISOR_MODEL", default="o3-2025-04-16", description="Model to use for supervisor agent")
     agent_model: str = Field(alias="AGENT_MODEL", default="o3-mini-2025-01-31", description="Model to use for regular agents")
     
-    # API settings
     pinecone: PineconeSettings = Field(default_factory=PineconeSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
     claude: ClaudeSettings = Field(default_factory=ClaudeSettings)
     langchain: LangChainSettings = Field(default_factory=LangChainSettings)
     
-    # Data and service settings
     data: DataSettings = Field(default_factory=DataSettings)
     smb: SMBSettings = Field(default_factory=SMBSettings)
     qbittorrent: QBittorrentSettings = Field(default_factory=QBittorrentSettings)
