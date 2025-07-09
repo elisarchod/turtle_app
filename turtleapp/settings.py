@@ -42,14 +42,10 @@ class LangChainSettings(BaseAppSettings):
 
 
 class DataSettings(BaseAppSettings):
-    base_dir: Path = Field(default_factory=lambda: Path(__file__).parent / "data_pipeline" / "data", description="Root directory for all data files")
-    raw_dir: Path = Field(default_factory=lambda: Path(__file__).parent / "data_pipeline" / "data" / "raw", description="Directory for unprocessed data files")
-    processed_dir: Path = Field(default_factory=lambda: Path(__file__).parent / "data_pipeline" / "data" / "processed", description="Directory for processed/cleaned data files")
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.raw_dir.mkdir(parents=True, exist_ok=True)
-        self.processed_dir.mkdir(parents=True, exist_ok=True)
+    movie_plots_path: Path = Field(
+        default=Path("turtleapp/data_pipeline/data/processed/wiki_movie_plots_cleaned.csv"), 
+        description="Path to the cleaned movie plots CSV file"
+    )
 
 
 class SMBSettings(BaseAppSettings):
