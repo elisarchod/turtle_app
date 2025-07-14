@@ -10,7 +10,7 @@ turtle-app-ep = "turtleapp.api.routes.endpoints:app"
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 langgraph = "^0.2.53"
-langsmith = "^0.1.143"
+langsmith = ">=0.3.45"
 langchain-pinecone = "^0.2.0"
 langchain-openai = "^0.2.11"
 python-dotenv = "^1.0.1"
@@ -22,6 +22,7 @@ langgraph-cli = {extras = ["inmem"], version = "^0.1.65"}
 pysmb = "^1.2.9"
 pandas = "^2.0.0"
 duckdb = "^0.9.0"
+langchain-anthropic = "^0.3.17"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.0.0"
@@ -40,6 +41,10 @@ addopts = ["-v", "--color=yes"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "asyncio: marks tests as async"
 ]
 
 

@@ -116,7 +116,7 @@ Tools are integrated into the workflow through:
 Each tool has corresponding test files:
 - `test_torrent.py`: Tests torrent operations
 - `test_library_manager.py`: Tests library scanning
-- `test_retriver.py`: Tests movie retrieval
+- `test_retriever.py`: Tests movie retrieval
 
 ## Adding New Tools
 

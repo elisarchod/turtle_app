@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
@@ -11,8 +11,8 @@ from turtleapp.src.utils import logger
 
 
 class MovieWorkflowGraph:
-    def __init__(self, supervisor_model_name: str = settings.openai.embedding_model):
-        self.supervisor_llm = ChatOpenAI(temperature=0, model=supervisor_model_name)
+    def __init__(self, supervisor_model_name: str = settings.supervisor_model):
+        self.supervisor_llm = ChatAnthropic(temperature=0, model=supervisor_model_name, api_key=settings.claude.api_key)
         self.nodes = {
             movie_retriever_tool.name: ToolAgent(movie_retriever_tool),
             torrent_info_tool.name: ToolAgent(torrent_info_tool),

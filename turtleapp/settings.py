@@ -80,8 +80,8 @@ class QBittorrentSettings(BaseAppSettings):
 
 
 class Settings(BaseAppSettings):
-    supervisor_model: str = Field(alias="SUPERVISOR_MODEL", default="o3-2025-04-16", description="Model to use for supervisor agent")
-    agent_model: str = Field(alias="AGENT_MODEL", default="o3-mini-2025-01-31", description="Model to use for regular agents")
+    supervisor_model: str = Field(alias="SUPERVISOR_MODEL", default="claude-3-5-sonnet-20241022", description="Model to use for supervisor agent")
+    agent_model: str = Field(alias="AGENT_MODEL", default="claude-3-5-haiku-20241022", description="Model to use for regular agents")
     
     pinecone: PineconeSettings = Field(default_factory=PineconeSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)

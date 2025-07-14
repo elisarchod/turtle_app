@@ -56,7 +56,7 @@ python run_tests.py --verbose
 ### Test Files
 
 - `test_torrent.py` - Tests for torrent-related functionality
-- `test_retriver.py` - Tests for movie retriever and RAG evaluation
+- `test_retriever.py` - Tests for movie retriever and RAG evaluation
 - `test_library_manager.py` - Tests for library management tools
 
 ### Configuration
