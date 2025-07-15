@@ -1,6 +1,5 @@
 from typing import List, TypedDict, Union
 
-from dotenv import load_dotenv
 from langchain import hub
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,8 +8,6 @@ from langgraph.graph import MessagesState
 from langgraph.types import Command
 
 from turtleapp.src.utils import logger
-
-load_dotenv(override=True)
 
 hub_prompt: ChatPromptTemplate = hub.pull("supervisor_prompt_with_placeholder")
 

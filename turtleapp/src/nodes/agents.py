@@ -1,41 +1,53 @@
+"""Tool agent implementation for the turtle app."""
+
 from typing import Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import Tool
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import MessagesState
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from turtleapp.settings import settings
-from turtleapp.src.core.agents.base import BaseAgent
+from turtleapp.src.constants import NodeNames
+from turtleapp.src.core.llm_factory import create_agent_llm
 from turtleapp.src.utils import logger
 
-class ToolAgent(BaseAgent):
-    def __init__(self, tool: Tool):
-        super().__init__(ChatAnthropic(temperature=0, model=settings.agent_model, api_key=settings.claude.api_key))
-        self.tool = tool
+
+class ToolAgent:
+    """A generic tool agent that wraps any tool with a ReAct agent."""
+
+    def __init__(self, tool: Tool) -> None:
+        self.llm = create_agent_llm()
         self.name = f"{tool.name}_agent"
-        logger.info(f"Initializing ToolAgent for tool: {tool.name}")
+        logger.info(f"Initializing {self.name}")
+        
+        self.tool = tool
         self.agent = create_react_agent(
             self.llm,
             tools=[tool],
             state_modifier=SystemMessage(
-                f"you are a super execution tool and you interact with the following tool and assert it gives good results {tool.description}"
+                f"You are a specialized execution agent that interacts with the following tool "
+                f"and ensures it provides accurate results: {tool.description}"
             )
         )
         self.agent.name = self.name
 
-    def process(self, state: MessagesState) -> Command[Literal["supervisor"]]:
+    async def process(self, state: MessagesState) -> Command[Literal["supervisor"]]:
         logger.info(f"Processing request with {self.name}")
-        result = self.agent.invoke(state)["messages"][-1].content
-        logger.info(f"ToolAgent {self.name} completed processing")
-        return Command(update={"messages": [HumanMessage(content=result)]}, goto="supervisor")
-
-    async def process_async(self, state: MessagesState) -> Command[Literal["supervisor"]]:
-        """Async version of the process method."""
-        logger.info(f"Processing request with {self.name} (async)")
-        result = await self.agent.ainvoke(state)
-        content = result["messages"][-1].content
-        logger.info(f"ToolAgent {self.name} completed processing (async)")
-        return Command(update={"messages": [HumanMessage(content=content)]}, goto="supervisor")
+        
+        try:
+            result = await self.agent.ainvoke(state)
+            content = result["messages"][-1].content
+            logger.info(f"ToolAgent {self.name} completed processing")
+            
+            return Command(
+                update={"messages": [HumanMessage(content=content)]},
+                goto=NodeNames.SUPERVISOR.value
+            )
+        except Exception as e:
+            logger.error(f"ToolAgent {self.name} failed: {str(e)}")
+            error_message = f"Error processing request with {self.name}: {str(e)}"
+            return Command(
+                update={"messages": [HumanMessage(content=error_message)]},
+                goto=NodeNames.SUPERVISOR.value
+            )
 

@@ -1,35 +1,22 @@
-from langchain_core.tools import Tool, create_retriever_tool
+from langchain_core.tools import Tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from langchain.tools import BaseTool
-from typing import Dict, Any, List
 
 from turtleapp.settings import settings
 from turtleapp.src.utils import logger
+from turtleapp.src.utils.error_handler import handle_tool_errors
 
 vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
     index_name=settings.pinecone.index_name,
     embedding=OpenAIEmbeddings(model=settings.openai.embedding_model)
 )
 
-retriever_prompt = """You are a movie expert assistant. 
-                        When given a movie name, genre, plot or any movie-related query, you should:
-                        1. Search the movie database using relevant keywords from the query
-                        2. Retrieve the most relevant movie information available
-                        3. Return the results in a clear, structured format including:
-                        - Movie title
-                        - Release year (if available)
-                        - Genre(s)
-                        - description/summary
-                        - Any other relevant details from the database
-
-                        If no relevant movies are found, clearly state that no matches were found in the database.
-                        Focus on providing accurate, helpful information based on what's available in the database."""
-
 class MovieRetrieverTool(BaseTool):
     name: str = "movie_details_retriever"
     description: str = "Search and retrieve movie information from the movie database using semantic search"
 
+    @handle_tool_errors(default_return="Movie search failed")
     def _run(self, query: str, max_results: int = 5) -> str:
         retriever = vector_store.as_retriever(search_kwargs={"k": max_results})
         

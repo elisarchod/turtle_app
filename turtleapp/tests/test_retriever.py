@@ -29,7 +29,7 @@ def test_query():
 @pytest.fixture
 async def retriever_response(test_query):
     """Fixture providing a retriever agent response (async)."""
-    return await retriever_agent.process_async(test_query)
+    return await retriever_agent.process(test_query)
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ async def mock_run(retriever_response, test_query):
 
 async def predict_rag_answer(example: Dict[str, str]) -> Dict[str, str]:
     """Async version of RAG answer prediction."""
-    response = await retriever_agent.process_async(example)
+    response = await retriever_agent.process(example)
     return {"output": response.update['messages'][-1].content, "output_context": response}
 
 

@@ -84,13 +84,13 @@ graph LR
 - **Testing**: `turtleapp/tests/test_retriever.py`
 
 ### ⬬ Torrent Manager Agent
-- **Role**: Manages torrent downloads and searches
+- **Role**: Manages torrent downloads and searches with natural language interface
 - **Integration**: qBittorrent Web API
 - **Capabilities**:
-  - List currently downloading torrents
-  - Search for torrents across multiple providers
-  - Add torrents via magnet links
-  - Monitor download progress
+  - Natural language queries ("search for terminator", "check downloads")
+  - List currently downloading torrents with simple status
+  - Search for torrents with clean, limited results
+  - LLM-optimized responses without technical complexity
 - **Implementation**: `turtleapp/src/core/tools/torrent_tools.py`
 - **Tool Name**: `torrent_info_tool`
 - **Testing**: `turtleapp/tests/test_torrent.py`
@@ -117,7 +117,10 @@ graph LR
 ### 🌐 API Layer
 - **Implementation**: `turtleapp/api/routes/endpoints.py`
 - **Technology**: FastAPI with async endpoints
-- **Endpoint**: `/ask-home-agent` - Main interaction endpoint
+- **Endpoints**: 
+  - `POST /chat` - Main conversation endpoint
+  - `GET /health` - Health check endpoint
+- **Features**: Thread management, request validation, structured responses
 - **Deployment**: Available via Poetry script `turtle-app-ep`
 
 ## 💬 Usage Examples
@@ -203,7 +206,7 @@ sequenceDiagram
 - **Poetry**: Dependency management and packaging
 - **LangSmith**: Model monitoring, evaluation, prompt management
 - **Docker**: Containerization for deployment
-- **Testing**: Combination of unit tests for core functionality and LangSmith monitoring for LLM-based components
+- **Testing**: Comprehensive test suite with pytest, async testing, and focused integration tests
 
 ## 🎯 Current Features & Roadmap
 
@@ -224,6 +227,34 @@ sequenceDiagram
   - [ ] Automatic library refresh after downloads
   - [ ] Cross-platform media player integration
   - [ ] Subtitle and metadata management
+
+### ✅ Recently Completed
+
+- **🔧 Code Quality Improvements**
+  - [x] **Constants and Enums**: Centralized configuration constants with proper enum types
+  - [x] **LLM Factory Pattern**: Eliminated duplicate LLM initialization code
+  - [x] **Standardized Error Handling**: Consistent error handling decorators across all tools
+  - [x] **Naming Conventions**: Improved function and variable naming for clarity
+  - [x] **Removed Abstractions**: Eliminated unnecessary BaseAgent abstraction
+  - [x] **Clean Documentation**: Removed uninformative docstrings
+
+- **⚡ Async/Await Consistency**
+  - [x] **Full Async Support**: All agents converted to async-only processing
+  - [x] **Async Workflow Compilation**: Workflow graph compiled for async execution
+  - [x] **Performance Improvements**: Enhanced concurrent request handling
+  - [x] **Simplified Architecture**: Removed dual sync/async complexity
+
+- **🧪 Testing Improvements**
+  - [x] **Simplified Test Suite**: Focused API endpoint testing with essential coverage
+  - [x] **Async Testing**: Comprehensive async operation testing with AsyncMock
+  - [x] **Error Handling Tests**: Verification of standardized error handling
+  - [x] **Integration Tests**: End-to-end workflow testing with conversation memory
+
+- **🛠️ LLM-Optimized Tools**
+  - [x] **Simplified Torrent Tool**: Natural language interface instead of complex parameters
+  - [x] **Clean API Design**: Modern REST API without backward compatibility
+  - [x] **Constants Organization**: Moved constants to appropriate directory structure
+  - [x] **Error Resilience**: Graceful handling of network failures and service unavailability
 
 ### 🗺️ Future Roadmap
 
@@ -268,5 +299,36 @@ poetry run turtle-app-ep
 ### API Usage
 ```bash
 # Ask the home theater assistant
-curl "http://localhost:8000/ask-home-agent?message=Tell%20me%20about%20Terminator%202"
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Tell me about Terminator 2"}'
+
+# With thread ID for conversation continuity
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What about the sequel?", "thread_id": "your-thread-id"}'
+
+# Health check
+curl "http://localhost:8000/health"
+```
+
+### Testing
+```bash
+# Run all tests
+poetry run pytest
+
+# Run tests with coverage
+poetry run pytest --cov=turtleapp
+
+# Run tests in parallel
+poetry run pytest -n auto
+
+# Skip slow tests
+poetry run pytest -m "not slow"
+
+# Run specific test files
+poetry run pytest turtleapp/tests/test_api_endpoints.py
+poetry run pytest turtleapp/tests/test_torrent.py
+poetry run pytest turtleapp/tests/test_library_manager.py
+poetry run pytest turtleapp/tests/test_retriever.py
 ```

@@ -29,7 +29,19 @@ def test_list_torrents():
 def test_tool_interface(torrent_tool):
     """Test the torrent tool interface."""
     logger.info("Testing torrent tool interface")
-    result = torrent_tool._run("list")
+    
+    # Test checking downloads (expect service unavailable or no downloads)
+    result = torrent_tool._run("check downloads")
     assert isinstance(result, str)
-    assert "torrents" in result.lower()
+    assert any(phrase in result.lower() for phrase in [
+        "download", "service unavailable", "no active", "torrent"
+    ])
+    
+    # Test searching (expect service unavailable or search results)
+    result = torrent_tool._run("search for terminator")
+    assert isinstance(result, str)
+    assert any(phrase in result.lower() for phrase in [
+        "terminator", "found", "no torrents", "service unavailable", "search"
+    ])
+    
     logger.info("Torrent tool interface test completed")

@@ -1,34 +1,41 @@
 # Turtle App Tools Structure
 
-This directory contains all the tools used by the Turtle app's LangChain agents. The tools follow LangChain best practices and provide a simple interface for external service interactions.
+This directory contains all the tools used by the Turtle app's LangChain agents. The tools are designed for LLM consumption with simple, clean outputs and natural language interfaces.
 
 ## Architecture Overview
 
-All tools inherit directly from LangChain's `BaseTool` class, providing a simple and direct approach without unnecessary abstraction layers.
+All tools inherit directly from LangChain's `BaseTool` class and use standardized error handling decorators for consistent behavior across the application.
 
 ## Tool Implementations
 
 ### 1. Torrent Client Tool (`torrent_tools.py`)
 
-**Purpose**: Manages torrent downloads and searches via qBittorrent Web API
+**Purpose**: Manages torrent downloads and searches via qBittorrent Web API with natural language interface
 
-**Operations**:
-- `list`: List currently downloading torrents (with optional filter)
-- `search`: Search for torrents across multiple providers
-- `add`: Add torrents via magnet links
+**Usage**: Single `query` parameter that accepts natural language input
 
-**Parameters**:
-- `operation`: "list", "search", or "add"
-- `filter_type`: "downloading" or "all" (for list operation)
-- `search_query`: Query string (for search operation)
-- `magnet_link`: Magnet link URL (for add operation)
+**Example Queries**:
+- `"check downloads"` - Lists current downloads
+- `"search for terminator"` - Searches for torrents
+- `"find inception movie"` - Searches for specific content
+- `"show current downloads"` - Lists active downloads
 
 **Example Response**:
 ```
-Found 3 torrents (filter: downloading):
-- The Matrix (45.2%)
-- Inception (78.9%)
-- Interstellar (12.1%)
+Currently downloading 2 items:
+- The Matrix (downloading)
+- Inception (completed)
+```
+
+**Search Response**:
+```
+Found torrents for 'terminator':
+1. Terminator 2 Judgment Day 1991 1080p BluRay
+2. The Terminator 1984 Director's Cut
+3. Terminator Dark Fate 2019 4K UHD
+4. Terminator 3 Rise of the Machines 2003
+5. Terminator Genisys 2015 Extended Cut
+... and 15 more available
 ```
 
 ### 2. Library Manager Tool (`library_manager.py`)
@@ -75,28 +82,34 @@ Found 3 movies matching 'comedy':
 
 ## Best Practices
 
-### 1. Tool Structure
-- All tools inherit from `BaseTool`
-- Return simple string responses
-- Implement proper error handling
-- Keep responses human-readable
+### 1. LLM-Optimized Design
+- Simple, clean output formats
+- Natural language interfaces where possible
+- Limited result sets to avoid overwhelming LLM
+- Human-readable responses without technical jargon
 
 ### 2. Error Handling
+All tools use standardized error handling decorators:
+
 ```python
-def _run(self, *args, **kwargs) -> str:
-    try:
-        # Tool logic here
-        return "Success message"
-    except Exception as e:
-        logger.error(f"Tool failed: {str(e)}")
-        return f"Error: {str(e)}"
+from turtleapp.src.utils.error_handler import handle_tool_errors, handle_service_errors
+
+@handle_tool_errors(default_return="Tool operation failed")
+def _run(self, query: str) -> str:
+    # Tool logic here
+    return "Success message"
+
+@handle_service_errors(service_name="ServiceName", default_return=[])
+def helper_function() -> List[Any]:
+    # Service logic here
+    return results
 ```
 
 ### 3. Response Format
 - Return human-readable strings
-- Include relevant information
-- Keep responses concise but informative
+- Include relevant information without technical details
 - Use clear formatting with newlines and bullet points
+- Limit output length for better LLM processing
 
 ### 4. Logging
 - Use the centralized logger from `log_handler.py`
@@ -107,16 +120,34 @@ def _run(self, *args, **kwargs) -> str:
 
 Tools are integrated into the workflow through:
 
-1. **ToolAgent**: Wraps each tool in a LangGraph agent
-2. **Supervisor**: Routes requests to appropriate tools
+1. **ToolAgent**: Wraps each tool in a LangGraph agent with async processing
+2. **Supervisor**: Routes requests to appropriate tools using natural language understanding
 3. **State Management**: Uses `MessagesState` for conversation context
+4. **Error Handling**: Standardized error handling with decorators
 
 ## Testing
 
 Each tool has corresponding test files:
-- `test_torrent.py`: Tests torrent operations
-- `test_library_manager.py`: Tests library scanning
-- `test_retriever.py`: Tests movie retrieval
+- `test_torrent.py`: Tests torrent operations with network failure handling
+- `test_library_manager.py`: Tests library scanning functionality
+- `test_retriever.py`: Tests movie retrieval and RAG evaluation
+
+## Recent Improvements
+
+### Simplified Torrent Tool
+- **Before**: Complex parameter system with `operation`, `filter_type`, `search_query`, `magnet_link`
+- **After**: Single `query` parameter with natural language processing
+- **Benefit**: Much easier for LLM to use and understand
+
+### Standardized Error Handling
+- Consistent error decorators across all tools
+- Better error messages for users
+- Graceful failure handling for network issues
+
+### Clean Documentation
+- Removed uninformative docstrings
+- Focused on essential information
+- Clear examples and usage patterns
 
 ## Adding New Tools
 
@@ -124,27 +155,34 @@ To add a new tool:
 
 1. Create a new file in the `tools/` directory
 2. Inherit from `BaseTool`
-3. Implement the `_run()` method with proper error handling
-4. Return simple string responses
-5. Add the tool to `__init__.py`
-6. Create corresponding tests
-7. Update the workflow graph if needed
+3. Use standardized error handling decorators
+4. Design for LLM consumption (simple inputs/outputs)
+5. Return human-readable string responses
+6. Add the tool to `__init__.py`
+7. Create corresponding tests
+8. Update the workflow graph if needed
 
 Example template:
 ```python
 from langchain.tools import BaseTool
+from turtleapp.src.utils.error_handler import handle_tool_errors
 
 class NewTool(BaseTool):
     name: str = "new_tool"
-    description: str = "Description of what this tool does"
+    description: str = "Simple description of what this tool does"
 
-    def _run(self, parameter: str) -> str:
-        try:
-            # Tool logic here
-            return "Success message with results"
-        except Exception as e:
-            logger.error(f"Tool failed: {str(e)}")
-            return f"Error: {str(e)}"
+    @handle_tool_errors(default_return="Tool operation failed")
+    def _run(self, query: str) -> str:
+        # Tool logic here
+        return "Success message with results"
 
 new_tool: Tool = NewTool()
-``` 
+```
+
+## Key Design Principles
+
+1. **LLM-First**: All tools designed for easy LLM consumption
+2. **Simplicity**: Avoid complex parameter combinations
+3. **Natural Language**: Use conversational interfaces where possible
+4. **Consistent Errors**: Standardized error handling across all tools
+5. **Clean Output**: Human-readable responses without technical noise

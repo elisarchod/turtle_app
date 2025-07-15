@@ -1,19 +1,25 @@
-from langchain_anthropic import ChatAnthropic
+"""Workflow graph implementation for the turtle app."""
+
+from typing import Dict, Optional
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from turtleapp.settings import settings
 from turtleapp.src.nodes import ToolAgent, SupervisorNodeCreator
 from turtleapp.src.core.tools import movie_retriever_tool, torrent_info_tool, library_manager_tool
+from turtleapp.src.constants import NodeNames
+from turtleapp.src.core.llm_factory import create_supervisor_llm
 from turtleapp.src.utils import logger
 
 
 class MovieWorkflowGraph:
-    def __init__(self, supervisor_model_name: str = settings.supervisor_model):
-        self.supervisor_llm = ChatAnthropic(temperature=0, model=supervisor_model_name, api_key=settings.claude.api_key)
-        self.nodes = {
+    """Multi-agent workflow graph for home theater management."""
+
+    def __init__(self) -> None:
+        self.supervisor_llm = create_supervisor_llm()
+        
+        self.nodes: Dict[str, ToolAgent] = {
             movie_retriever_tool.name: ToolAgent(movie_retriever_tool),
             torrent_info_tool.name: ToolAgent(torrent_info_tool),
             library_manager_tool.name: ToolAgent(library_manager_tool)
@@ -21,9 +27,13 @@ class MovieWorkflowGraph:
     
     def compile(self) -> CompiledStateGraph:
         builder = StateGraph(MessagesState)
-        supervisor_node = SupervisorNodeCreator(self.supervisor_llm, members=list(self.nodes.keys()))
-        builder.add_edge(START, "supervisor")
-        builder.add_node("supervisor", supervisor_node)
+        supervisor_node = SupervisorNodeCreator(
+            self.supervisor_llm,
+            members=list(self.nodes.keys())
+        )
+        
+        builder.add_edge(START, NodeNames.SUPERVISOR.value)
+        builder.add_node(NodeNames.SUPERVISOR.value, supervisor_node)
         
         for agent_name, agent in self.nodes.items():
             builder.add_node(agent_name, agent.process)
@@ -34,7 +44,11 @@ class MovieWorkflowGraph:
 
 movie_workflow_agent: CompiledStateGraph = MovieWorkflowGraph().compile()
 
+
 if __name__ == '__main__':
     config = {"configurable": {"thread_id": "gen_int_13"}}
-    result = movie_workflow_agent.invoke({"messages": "tell me the plot of terminator 2 ?"}, config=config)
+    result = movie_workflow_agent.invoke(
+        {"messages": "tell me the plot of terminator 2 ?"},
+        config=config
+    )
     logger.info(f"Workflow result: {result['messages'][-1].content}")
