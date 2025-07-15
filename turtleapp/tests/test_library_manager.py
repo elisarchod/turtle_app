@@ -1,7 +1,4 @@
 import pytest
-from typing import List, Dict, Any
-
-from turtleapp.src.utils import logger
 from turtleapp.src.core.tools.library_manager import LibraryManagerTool
 
 
@@ -19,6 +16,5 @@ def test_interface(library_manager_tool):
 def test_tool_run(library_manager_tool):
     """Test the library manager tool execution."""
     result = library_manager_tool._run()
-    assert isinstance(result, str), "Expected a string response"
-    assert len(result) > 0, "Expected non-empty response"
-    logger.info(f"Tool response: {result}")
+    assert isinstance(result, str)
+    assert len(result) > 0

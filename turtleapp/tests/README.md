@@ -7,12 +7,12 @@ This directory contains the test suite for the turtle-app project, focused on es
 ### Using Poetry (Recommended)
 
 ```bash
-# Run all tests
-poetry run pytest
-
 # Run with verbose output
 poetry run pytest -v
 
+```
+
+```bash
 # Run specific test file
 poetry run pytest turtleapp/tests/test_api_endpoints.py
 
@@ -53,74 +53,83 @@ pytest --cov=turtleapp --cov-report=html
 
 ### Configuration
 
-- `conftest.py` - Shared pytest fixtures and configuration
-- `pytest.ini` - Pytest configuration settings (in pyproject.toml)
+- `pyproject.toml` - Pytest configuration settings and test dependencies
+
+## Test Philosophy
+
+The test suite focuses on **integration testing** - testing that components work together correctly. This approach is more valuable than pure unit tests for this application because:
+
+- **Real user scenarios** - Users interact with APIs and tools, not isolated functions
+- **External dependencies** - Most functionality involves external services (Pinecone, OpenAI, qBittorrent)
+- **Error handling** - The system's key feature is graceful fallbacks when services fail
+- **Simpler maintenance** - Less complex mocking, more realistic test scenarios
+
+All tests are designed to:
+- Work with or without external services (graceful fallbacks)
+- Test actual user workflows
+- Validate error handling and resilience
+- Be simple and maintainable
 
 ## Test Coverage
 
 The test suite covers:
 
-### API Layer
-- **POST /chat endpoint**: Success, error handling, thread ID management
-- **GET /health endpoint**: Health check functionality
-- **Request validation**: Pydantic model validation
-- **Error responses**: Structured error handling
+### API Layer (`test_api_endpoints.py`)
+- `test_chat_success()` - Chat endpoint with workflow agent integration
+- `test_chat_missing_message()` - Input validation
+- `test_chat_workflow_error()` - Error handling across API layers
+- `test_health_endpoint()` - Health check endpoint
 
 ### Core Tools
-- **Library Manager**: SMB scanning, file detection, error handling
-- **Movie Retriever**: Vector search, response formatting, RAG evaluation
-- **Torrent Manager**: Download management, search functionality
-
-### Workflow Integration
-- **Async processing**: All agents use async-only processing
-- **Error handling**: Standardized error handling decorators
-- **Thread management**: Conversation persistence with MemorySaver
+- **Library Manager** (`test_library_manager.py`):
+  - `test_interface()` - Tool interface validation
+  - `test_tool_run()` - Tool execution with network share integration
+- **Movie Retriever** (`test_retriever.py`):
+  - `test_retriever_agent_response()` - Agent + tool + external service integration
+  - `test_retriever_tool_interface()` - Tool interface validation
+- **Torrent Manager** (`test_torrent.py`):
+  - `test_list_torrents()` - Core function with mocked API
+  - `test_tool_interface()` - Tool interface with graceful fallbacks
+  - `test_error_handling()` - Service error handling validation
 
 ## Test Markers
 
-The following pytest markers are available:
-
-- `@pytest.mark.slow` - Slow-running tests (can be skipped with `-m "not slow"`)
 - `@pytest.mark.asyncio` - Async tests (automatically handled by pytest-asyncio)
 
 ## Fixtures
 
-### Shared Fixtures
-
+### API Testing Fixtures (`test_api_endpoints.py`)
 - `client()` - FastAPI TestClient for API testing
 - `mock_workflow_agent()` - Mock workflow agent with AsyncMock
 
-### Test-Specific Fixtures
-
-- `torrent_tool()` - Provides a TorrentClientTool instance
-- `library_manager_tool()` - Provides a LibraryManagerTool instance
-- `test_query()` - Provides test query data
-- `retriever_response()` - Provides retriever agent response
-- `mock_run()` - Provides mock run data for evaluation tests
+### Tool Testing Fixtures
+- `torrent_tool()` - TorrentClientTool instance (`test_torrent.py`)
+- `library_manager_tool()` - LibraryManagerTool instance (`test_library_manager.py`)
+- `retriever_agent()` - ToolAgent with movie retriever (`test_retriever.py`)
 
 ## Testing Approach
 
-### Simplified Architecture
-- **Focused tests**: Essential functionality without over-engineering
-- **Async testing**: Uses AsyncMock for async operations
-- **JSON responses**: Tests structured API responses
-- **Error scenarios**: Comprehensive error handling validation
+### Integration-First Strategy
+- **Real workflows**: Test actual user scenarios end-to-end
+- **External service resilience**: Tests work with or without external services
+- **Error scenarios**: Validate graceful fallbacks and error handling
+- **Simple and maintainable**: Minimal mocking, focus on essential functionality
 
 ### Mock Strategy
-- **External services**: Mocked for consistent testing
-- **AsyncMock usage**: Proper async mocking to avoid serialization issues
+- **Only when necessary**: Mock external APIs for consistent testing
+- **AsyncMock for async operations**: Proper async mocking to avoid serialization issues
 - **Realistic responses**: Mock responses match actual API behavior
 
 ## Writing New Tests
 
 When adding new tests:
 
-1. Use descriptive test function names starting with `test_`
-2. Add docstrings to explain what each test does
-3. Use fixtures for setup and teardown
-4. Add appropriate markers for test categorization
-5. Use meaningful assertions with clear error messages
-6. Test both success and error scenarios
+1. **Focus on user workflows** - Test how users actually interact with the system
+2. **Test error handling** - Ensure graceful fallbacks work correctly
+3. **Keep it simple** - Avoid overengineering with complex mocks
+4. **Use descriptive names** - Clear test function names starting with `test_`
+5. **Add brief docstrings** - Explain what the test validates
+6. **Use fixtures** - Share setup code efficiently
 
 Example:
 
@@ -129,31 +138,31 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 
-def test_new_endpoint_success(client, mock_workflow_agent):
-    """Test that the new endpoint works correctly."""
+def test_chat_success(client, mock_workflow_agent):
+    """Test successful chat endpoint interaction."""
     with patch('turtleapp.api.routes.endpoints.movie_workflow_agent', mock_workflow_agent):
-        response = client.post("/new-endpoint", json={"data": "test"})
+        response = client.post("/chat", json={"message": "test"})
         
         assert response.status_code == 200
         result = response.json()
-        assert "expected_field" in result
+        assert "response" in result
+        assert "thread_id" in result
 ```
 
 ## Environment Setup
 
 Tests automatically load environment variables from `.env` files. The test suite is designed to work with mocked external services, so most API keys are not required for testing.
 
-## Recent Improvements
-
-- **Simplified API**: Removed backward compatibility, focused on modern REST design
-- **Async-only**: All agents converted to async-only processing
-- **Standardized errors**: Consistent error handling with decorators
-- **Clean docstrings**: Removed uninformative docstrings
-- **Focused coverage**: Essential functionality testing without over-engineering
-
 ## Performance
 
 - **Parallel execution**: Tests can run in parallel with `pytest -n auto`
 - **Async support**: Proper async testing with pytest-asyncio
-- **Fast mocking**: Efficient mocking strategy for external dependencies
-- **Selective running**: Skip slow tests during development
+- **Fast execution**: Simple tests without complex setup
+- **Resilient**: Work with or without external services
+
+## Test Statistics
+
+- **Total tests**: 11
+- **Test files**: 4
+- **Coverage**: Essential functionality focused on real user workflows
+- **Execution time**: ~30-40 seconds (depends on external service availability)

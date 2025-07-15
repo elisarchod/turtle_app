@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-
+import smbclient as smb_client
 from langchain_core.tools import Tool
 from langchain.tools import BaseTool
 
@@ -14,20 +14,18 @@ import re
 
 def clean_movie_filename(filename: str) -> str:
     name_without_ext = os.path.splitext(filename)[0]
-    cleaned_name = re.sub(r'[\._]', ' ', name_without_ext)
-    return ' '.join(cleaned_name.split())
+    clean = re.sub(r'[^a-zA-Z0-9\s]', '', name_without_ext)
+    return re.sub(r'^(.{5}.*?\d{4}).*|^(.{30}).*', r'\1\2', clean)
 
 
 @handle_service_errors(service_name="LibraryManager", default_return={})
 def scan_smb_movie_library() -> Dict[str, str]:
     movies = {}
-    
-    share_path = settings.smb.share_path
-    if not share_path:
-        logger.warning("No network share path configured")
-        return movies
-    
-    for root, dirs, files in os.walk(share_path):
+    smb_client.register_session(settings.smb.server,
+                                username=settings.smb.username,
+                                password=settings.smb.password)
+
+    for root, dirs, files in smb_client.walk(settings.smb.share_path):
         for file in files:
             if file.lower().endswith(FileExtensions.MOVIE_EXTENSIONS):
                 file_path = os.path.join(root, file)
@@ -43,7 +41,7 @@ class LibraryManagerTool(BaseTool):
     description: str = "Scans and catalogs the local movie library from network shares"
 
     @handle_tool_errors(default_return="Library scan failed")
-    def _run(self, force_refresh: bool = False) -> str:
+    def _run(self) -> str:
         movies_paths = scan_smb_movie_library()
         
         if not movies_paths:

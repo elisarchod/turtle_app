@@ -37,7 +37,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["turtleapp/tests"]
-addopts = ["-v", "--color=yes"]
+addopts = ["-v", "--color=yes", "--log-cli-level=INFO"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning"

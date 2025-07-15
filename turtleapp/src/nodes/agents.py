@@ -1,33 +1,42 @@
 """Tool agent implementation for the turtle app."""
 
-from typing import Literal
+from typing import Literal, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import Tool
 from langgraph.graph import MessagesState
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
-from turtleapp.src.constants import NodeNames
+from turtleapp.src.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
 from turtleapp.src.utils import logger
 
 
 class ToolAgent:
-    """A generic tool agent that wraps any tool with a ReAct agent."""
+    """A generic tool agent that wraps one or more tools with a ReAct agent."""
 
-    def __init__(self, tool: Tool) -> None:
+    def __init__(self, tools: List[Tool], name: str = None) -> None:
         self.llm = create_agent_llm()
-        self.name = f"{tool.name}_agent"
+        self.tools = tools
+        self.name = name or f"{tools[0].name}_agent"
+            
         logger.info(f"Initializing {self.name}")
         
-        self.tool = tool
+        tool_descriptions = [f"- {tool.name}: {tool.description}" for tool in self.tools]
+        description = (
+            f"You are a specialized execution agent with access to the following tools:\n"
+            f"{chr(10).join(tool_descriptions)}\n\n"
+            f"Instructions:\n"
+            f"- Use the appropriate tool based on the user's request\n"
+            f"- Provide accurate and complete results\n"
+            f"- If multiple tools are available, choose the most relevant one\n"
+            f"- Always execute the tool to completion before responding"
+        )
+        
         self.agent = create_react_agent(
             self.llm,
-            tools=[tool],
-            state_modifier=SystemMessage(
-                f"You are a specialized execution agent that interacts with the following tool "
-                f"and ensures it provides accurate results: {tool.description}"
-            )
+            tools=self.tools,
+            state_modifier=SystemMessage(description)
         )
         self.agent.name = self.name
 
@@ -41,13 +50,15 @@ class ToolAgent:
             
             return Command(
                 update={"messages": [HumanMessage(content=content)]},
-                goto=NodeNames.SUPERVISOR.value
+                goto=SUPERVISOR_NODE
             )
         except Exception as e:
-            logger.error(f"ToolAgent {self.name} failed: {str(e)}")
+            # Use the error handler for consistent logging
+            error_msg = f"ToolAgent error in {self.name}: {str(e)}"
+            logger.error(error_msg)
             error_message = f"Error processing request with {self.name}: {str(e)}"
             return Command(
                 update={"messages": [HumanMessage(content=error_message)]},
-                goto=NodeNames.SUPERVISOR.value
+                goto=SUPERVISOR_NODE
             )
 

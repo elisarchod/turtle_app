@@ -14,24 +14,20 @@ from turtleapp.settings import settings
 
 logger = logging.getLogger(__name__)
 
+MAX_DOCUMENTS = 300
+
 class DocumentLoader:
     
-    def load_documents(self, file_path: str, max_documents: Optional[int] = None) -> List[Document]:
+    def load_documents(self, file_path: str) -> List[Document]:
         loader = CSVLoader(
             file_path=file_path,
             csv_args={
                 'quotechar': '"',
-                'fieldnames': ['release_year', 'title', 'director', 'cast', 'genre', 'plot']
+                'fieldnames': None
             },
-            content_columns=["title", "release_year", "director", "cast", "genre", "plot"]
         )
         documents = loader.load()
-        
-        if max_documents and len(documents) > max_documents:
-            logger.info(f"Limiting documents from {len(documents)} to {max_documents}")
-            documents = documents[:max_documents]
-        
-        return documents
+        return documents[:MAX_DOCUMENTS]
 
 class PineconeUploader:
     

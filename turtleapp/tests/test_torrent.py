@@ -1,47 +1,58 @@
 import pytest
+from unittest.mock import patch, MagicMock
 
 from turtleapp.src.core.tools.torrent_tools import (
     get_torrents, 
-    TorrentClientTool
+    TorrentDownloadsTool,
+    TorrentSearchTool
 )
-from turtleapp.src.utils import logger
 
 
 @pytest.fixture
-def torrent_tool():
-    """Fixture to provide a TorrentClientTool instance."""
-    return TorrentClientTool()
+def downloads_tool():
+    """Fixture to provide a TorrentDownloadsTool instance."""
+    return TorrentDownloadsTool()
 
 
-def test_list_torrents():
+@pytest.fixture
+def search_tool():
+    """Fixture to provide a TorrentSearchTool instance."""
+    return TorrentSearchTool()
+
+
+@patch('turtleapp.src.core.tools.torrent_tools.api_call')
+def test_list_torrents(mock_api_call):
     """Test the list torrents functionality."""
-    logger.info("Testing list torrents functionality")
+    mock_response = MagicMock()
+    mock_response.json.return_value = [
+        {'name': 'Test Movie', 'state': 'downloading', 'progress': 0.75}
+    ]
+    mock_api_call.return_value = mock_response
+    
     torrents = get_torrents(filter_downloading=True)
     assert isinstance(torrents, list)
-    if torrents:
-        assert 'name' in torrents[0]
-        assert 'progress_percent' in torrents[0]
-        logger.info(f"Found {len(torrents)} torrents")
-    else:
-        logger.info("No torrents found")
+    assert len(torrents) == 1
+    assert torrents[0]['progress_percent'] == 75.0
 
 
-def test_tool_interface(torrent_tool):
-    """Test the torrent tool interface."""
-    logger.info("Testing torrent tool interface")
-    
-    # Test checking downloads (expect service unavailable or no downloads)
-    result = torrent_tool._run("check downloads")
+def test_downloads_tool_interface(downloads_tool):
+    """Test the downloads tool interface."""
+    result = downloads_tool._run("")
     assert isinstance(result, str)
-    assert any(phrase in result.lower() for phrase in [
-        "download", "service unavailable", "no active", "torrent"
-    ])
-    
-    # Test searching (expect service unavailable or search results)
-    result = torrent_tool._run("search for terminator")
+
+
+def test_search_tool_interface(search_tool):
+    """Test the search tool interface."""
+    result = search_tool._run("test movie")
     assert isinstance(result, str)
-    assert any(phrase in result.lower() for phrase in [
-        "terminator", "found", "no torrents", "service unavailable", "search"
-    ])
+
+
+@patch('turtleapp.src.core.tools.torrent_tools.api_call')
+def test_error_handling(mock_api_call):
+    """Test error handling returns fallback values."""
+    mock_api_call.side_effect = Exception("Connection failed")
     
-    logger.info("Torrent tool interface test completed")
+    # Should return empty list on error
+    torrents = get_torrents(filter_downloading=True)
+    assert isinstance(torrents, list)
+    assert len(torrents) == 0

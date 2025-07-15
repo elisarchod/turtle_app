@@ -1,3 +1,6 @@
+from datetime import time
+from datetime import datetime
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import uuid
@@ -24,7 +27,7 @@ class ChatResponse(BaseModel):
     
 class HealthResponse(BaseModel):
     status: str = Field(..., description="API health status")
-    version: str = Field(..., description="API version")
+    time: datetime = Field(..., description="Current server time")
     uptime: str = Field(..., description="API uptime information")
     
 class ErrorResponse(BaseModel):
@@ -36,9 +39,11 @@ class ErrorResponse(BaseModel):
 async def health_check():
     return HealthResponse(
         status="healthy",
-        version="1.0.0",
+        time=datetime.now(),
         uptime="Running"
     )
+
+
 
 @app.post("/chat", response_model=ChatResponse, responses={500: {"model": ErrorResponse}})
 async def chat(request: ChatRequest):
@@ -48,9 +53,8 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
     logger.info(f"Received request: {message}")
     
     try:
-        # Use provided thread ID or generate a new one
         if not thread_id:
-            thread_id = str(uuid.uuid4())
+            thread_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
         
         config = {ConfigKeys.CONFIGURABLE.value: {ConfigKeys.THREAD_ID.value: thread_id}}
         
@@ -61,8 +65,7 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
         messages = result.get(ConfigKeys.MESSAGES.value, [])
         if messages:
             last_message = messages[-1]
-            # Handle both dict and object formats
-            response_content = last_message.content if hasattr(last_message, 'content') else last_message.get('content', 'No response generated')
+            response_content = last_message.content
         else:
             response_content = "No response generated"
         

@@ -84,15 +84,18 @@ graph LR
 - **Testing**: `turtleapp/tests/test_retriever.py`
 
 ### ⬬ Torrent Manager Agent
-- **Role**: Manages torrent downloads and searches with natural language interface
+- **Role**: Comprehensive torrent management with intelligent tool selection
 - **Integration**: qBittorrent Web API
+- **Architecture**: Single agent with multiple specialized tools
 - **Capabilities**:
-  - Natural language queries ("search for terminator", "check downloads")
-  - List currently downloading torrents with simple status
-  - Search for torrents with clean, limited results
-  - LLM-optimized responses without technical complexity
+  - **Download monitoring**: List currently downloading torrents with progress status
+  - **Torrent search**: Search for movie torrents by title or keyword
+  - **Intelligent routing**: ReAct agent automatically selects appropriate tool based on user intent
+  - **Natural language interface**: Handles queries like "check downloads" or "search for Matrix"
+- **Tools Available**:
+  - `torrent_downloads_tool`: Monitor current downloads and status
+  - `torrent_search_tool`: Search torrent sites through qBittorrent plugins
 - **Implementation**: `turtleapp/src/core/tools/torrent_tools.py`
-- **Tool Name**: `torrent_info_tool`
 - **Testing**: `turtleapp/tests/test_torrent.py`
 
 ### 📁 Library Manager Agent
@@ -123,6 +126,29 @@ graph LR
 - **Features**: Thread management, request validation, structured responses
 - **Deployment**: Available via Poetry script `turtle-app-ep`
 
+### 🛠️ Core Utilities
+
+**LLM Factory** (`turtleapp/src/core/llm_factory.py`):
+- Centralized LLM initialization to eliminate duplicate code
+- Consistent configuration for supervisor and agent models
+- Uses settings for model selection and API key management
+
+**Error Handling** (`turtleapp/src/utils/error_handler.py`):
+- Standardized error handling decorators for tools and services
+- Consistent error logging and user-friendly error messages
+- Applied across all tool implementations
+- Provides `@handle_tool_errors` and `@handle_service_errors` decorators
+
+**Logging** (`turtleapp/src/utils/log_handler.py`):
+- Centralized logging configuration for the application
+- Consistent log formatting and levels across all components
+- Structured logging for better debugging and monitoring
+
+**Constants** (`turtleapp/src/constants.py`):
+- Centralized configuration constants and enums
+- Node names, file extensions, and default values
+- Pure enums for better type safety
+
 ## 💬 Usage Examples
 
 ### Movie Information & Recommendations
@@ -148,9 +174,16 @@ sequenceDiagram
   participant TM as Torrent Manager
   U ->> S: "Download The Matrix"
   S ->> TM: Route to Torrent Manager
-  TM ->> TM: Search for torrents & Select best option
-  TM ->> S: Downloading selected torrent
-  S ->> U: Download started for The Matrix
+  TM ->> TM: Select torrent_search_tool
+  TM ->> TM: Search for Matrix torrents
+  TM ->> S: Return search results
+  S ->> U: Found Matrix torrents (user selects)
+  U ->> S: "Check my downloads"
+  S ->> TM: Route to Torrent Manager
+  TM ->> TM: Select torrent_downloads_tool
+  TM ->> TM: Get download status
+  TM ->> S: Current downloads with progress
+  S ->> U: Matrix downloading at 45%
 ```
 
 ### Movie Night Management
@@ -166,14 +199,16 @@ sequenceDiagram
   S ->> LM: Route to Library Manager
   LM ->> LM: Scan local files
   LM ->> S: No local file found
-  TM ->> TM: Search for torrents & Select best option
-  TM ->> S: Downloading selected torrent
-  S ->> MR: Find movie similar to Star Wars
-  MR ->> S: Return movie plot & details
-  S ->> LM: Scan local files for similar movie
+  S ->> TM: Route to Torrent Manager
+  TM ->> TM: Select torrent_search_tool
+  TM ->> TM: Search for Star Wars torrents
+  TM ->> S: Return search results
+  S ->> MR: Find similar movies
+  MR ->> S: Return recommendations
+  S ->> LM: Check for similar movies
   LM ->> LM: Scan local files
-  LM ->> S: Found local file for "Harry Potter"
-  S ->> U: Download started for Inception & Watch Harry Potter in the meantime
+  LM ->> S: Found "Empire Strikes Back"
+  S ->> U: Star Wars torrents found. You have "Empire Strikes Back" locally.
 ```
 
 ## 🛠️ Technology Stack
@@ -183,8 +218,8 @@ sequenceDiagram
 - **LangGraph**: Multi-agent orchestration and workflow management
 - **LangChain**: LLM integration and tool chaining
 - **Claude 3.5 (Anthropic)**: Primary language model for reasoning and responses
-  - Supervisor: Claude 3.5 Sonnet (`o3-2025-04-16`)
-  - Agents: Claude 3.5 Haiku (`o3-mini-2025-01-31`)
+  - Supervisor: Claude 3.5 Sonnet (`claude-3-5-sonnet-20241022`)
+  - Agents: Claude 3.5 Haiku (`claude-3-5-haiku-20241022`)
 - **Python 3.11+**: Core application runtime
 
 ### Data & Storage
@@ -251,7 +286,8 @@ sequenceDiagram
   - [x] **Integration Tests**: End-to-end workflow testing with conversation memory
 
 - **🛠️ LLM-Optimized Tools**
-  - [x] **Simplified Torrent Tool**: Natural language interface instead of complex parameters
+  - [x] **Combined Torrent Agent**: Single agent with multiple tools for intelligent routing
+  - [x] **Removed Overengineered Parsing**: Let ReAct agents handle natural language routing
   - [x] **Clean API Design**: Modern REST API without backward compatibility
   - [x] **Constants Organization**: Moved constants to appropriate directory structure
   - [x] **Error Resilience**: Graceful handling of network failures and service unavailability
@@ -276,10 +312,13 @@ sequenceDiagram
 ### Prerequisites
 - Python 3.11+
 - Poetry
+- Docker (for containerized deployment)
 - qBittorrent (for torrent functionality)
 - SMB/CIFS network share (for library management)
 
-### Installation
+### Installation & Running
+
+#### Option 1: Local Development
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -294,6 +333,25 @@ cp .env.example .env
 
 # Run the API server
 poetry run turtle-app-ep
+```
+
+#### Option 2: Docker Deployment
+
+##### FastAPI Server (Recommended)
+```bash
+# Build and run FastAPI server
+docker build -f build/Dockerfile_api -t turtle-app-api .
+docker run -p 8000:8000 turtle-app-api
+
+# Or with environment file
+docker run -p 8000:8000 --env-file .env turtle-app-api
+```
+
+##### LangGraph Cloud/Server
+```bash
+# Build and run LangGraph server
+docker build -f build/Dockerfile_langgraph -t turtle-app-langgraph .
+docker run -p 8000:8000 turtle-app-langgraph
 ```
 
 ### API Usage

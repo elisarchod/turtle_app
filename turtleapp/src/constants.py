@@ -3,12 +3,7 @@
 from enum import Enum
 
 
-class NodeNames(Enum):
-    """Node names for the workflow graph."""
-    SUPERVISOR = "supervisor"
-    MOVIE_RETRIEVER = "movie_retriever"
-    TORRENT_MANAGER = "torrent_info"
-    LIBRARY_MANAGER = "library_manager"
+SUPERVISOR_NODE = "supervisor"
 
 
 class ConfigKeys(Enum):
