@@ -65,6 +65,15 @@ graph LR
 
 ## 🔧 Components Deep Dive
 
+### 🔄 Workflow Orchestration
+- **Implementation**: `turtleapp/src/workflows/graph.py`
+- **Technology**: LangGraph for multi-agent orchestration
+- **Components**:
+  - State management using `MessagesState`
+  - Memory persistence with `MemorySaver`
+  - Agent routing and coordination
+- **Main Agent**: `movie_workflow_agent`
+
 ### 🎯 Supervisor Agent
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
 - **Technology**: Claude 3.5 Sonnet with LangChain Hub prompts for intelligent routing decisions
@@ -108,15 +117,6 @@ graph LR
 - **Tool Name**: `library_manager_tool`
 - **Testing**: `turtleapp/tests/test_library_manager.py`
 
-### 🔄 Workflow Orchestration
-- **Implementation**: `turtleapp/src/workflows/graph.py`
-- **Technology**: LangGraph for multi-agent orchestration
-- **Components**:
-  - State management using `MessagesState`
-  - Memory persistence with `MemorySaver`
-  - Agent routing and coordination
-- **Main Agent**: `movie_workflow_agent`
-
 ### 🌐 API Layer
 - **Implementation**: `turtleapp/api/routes/endpoints.py`
 - **Technology**: FastAPI with async endpoints
@@ -129,20 +129,11 @@ graph LR
 ### 🛠️ Core Utilities
 
 **LLM Factory** (`turtleapp/src/core/llm_factory.py`):
-- Centralized LLM initialization to eliminate duplicate code
-- Consistent configuration for supervisor and agent models
 - Uses settings for model selection and API key management
 
 **Error Handling** (`turtleapp/src/utils/error_handler.py`):
 - Standardized error handling decorators for tools and services
-- Consistent error logging and user-friendly error messages
 - Applied across all tool implementations
-- Provides `@handle_tool_errors` and `@handle_service_errors` decorators
-
-**Logging** (`turtleapp/src/utils/log_handler.py`):
-- Centralized logging configuration for the application
-- Consistent log formatting and levels across all components
-- Structured logging for better debugging and monitoring
 
 **Constants** (`turtleapp/src/constants.py`):
 - Centralized configuration constants and enums
@@ -253,6 +244,18 @@ sequenceDiagram
 - **📁 Library Management**: SMB/CIFS network share scanning
 - **🌐 REST API**: FastAPI endpoint for external interactions
 - **💾 Data Pipeline**: Movie data processing and vector store upload
+  - **Data Pipeline Manager** (`turtleapp/data_pipeline/vector_store/vector_store_manager.py`):
+    - `MovieDataLoader`: Loads movie data from CSV files with configurable limits (default: 300 documents)
+    - `PineconeVectorStoreManager`: Manages Pinecone index creation and document uploads
+    - Batch processing with concurrent uploads for performance (100 docs/batch, 4 workers)
+    - Automatic index creation with 3072-dimensional embeddings and cosine similarity
+  - **Pipeline Runner** (`turtleapp/data_pipeline/vector_store/upload_script.py`):
+    - Main script for executing the data pipeline
+    - Handles the complete flow from data loading to vector store upload
+    - Async processing for improved performance
+  - **Data Storage** (`turtleapp/data_pipeline/data/processed/`):
+    - `wiki_movie_plots_cleaned.csv`: Processed movie plot data from CMU Movie Summary Corpus
+    - Contains movie summaries, metadata, and plot descriptions for vector embedding
 - **🧪 Testing**: Comprehensive test suite for all core components
 
 ### 🚧 In Development

@@ -2,34 +2,52 @@ from typing import List, Optional
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import csv
+from pathlib import Path
+import time
 
-from langchain_community.document_loaders import CSVLoader
+from tqdm import tqdm
+
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from pinecone import Index, Pinecone, ServerlessSpec
-import time
+from pinecone import Pinecone, ServerlessSpec
 
 from turtleapp.settings import settings
 
 logger = logging.getLogger(__name__)
 
 MAX_DOCUMENTS = 300
+METADATA_DELIMITER = " | "
 
-class DocumentLoader:
+class MovieDataLoader:
     
     def load_documents(self, file_path: str) -> List[Document]:
-        loader = CSVLoader(
-            file_path=file_path,
-            csv_args={
-                'quotechar': '"',
-                'fieldnames': None
-            },
-        )
-        documents = loader.load()
-        return documents[:MAX_DOCUMENTS]
+        documents = []
+        
+        with Path(file_path).open(encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            
+            for i, row in enumerate(tqdm(reader, desc="Loading documents", total=MAX_DOCUMENTS)):
+                if i >= MAX_DOCUMENTS:
+                    break
+                    
+                formatted_content = self._format_movie_data(row)
+                doc = Document(page_content=formatted_content)
+                documents.append(doc)
+                
+        return documents
+    
+    def _format_movie_data(self, row: dict[str, str]) -> str:
+        fields = []
+        
+        for field_name in ['title', 'release_year', 'director', 'cast', 'genre', 'plot']:
+            if value := row.get(field_name, '').strip():
+                fields.append(f"{field_name}: {value}")
+            
+        return METADATA_DELIMITER.join(fields)
 
-class PineconeUploader:
+class PineconeVectorStoreManager:
     
     def __init__(
         self, 
@@ -94,7 +112,7 @@ class PineconeUploader:
                 for batch_docs, batch_ids in batches
             ]
             
-            for i, future in enumerate(futures, 1):
+            for i, future in enumerate(tqdm(futures, desc="Uploading batches", unit="batch"), 1):
                 try:
                     future.result()
                     logger.info(f"Batch {i}/{len(batches)} uploaded")

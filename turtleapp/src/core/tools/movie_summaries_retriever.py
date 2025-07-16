@@ -2,7 +2,6 @@ from langchain_core.tools import Tool
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from langchain.tools import BaseTool
-from typing import Dict
 
 from turtleapp.settings import settings
 from turtleapp.src.utils.error_handler import handle_tool_errors
@@ -12,19 +11,14 @@ vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
     embedding=OpenAIEmbeddings(model=settings.openai.embedding_model)
 )
 
-def parse_document_content(content: str) -> Dict[str, str]:
-    parsed_fields = {}
-    
-    for line in content.strip().split('\n'):
-        line = line.strip()
-        if line and ':' in line:
-            key, value = line.split(':', 1)
-            key = key.strip()
-            value = value.strip()
-            if key and value:
-                parsed_fields[key] = value
-    
-    return parsed_fields
+def parse_document_content(content: str) -> dict[str, str]:
+    return {
+        key.strip(): value.strip()
+        for field in content.strip().split(' | ')
+        if ':' in field
+        for key, value in [field.split(':', 1)]
+        if key.strip() and value.strip()
+    }
 
 class MovieRetrieverTool(BaseTool):
     name: str = "movie_details_retriever"
@@ -34,7 +28,7 @@ class MovieRetrieverTool(BaseTool):
     def _run(self, query: str, max_results: int = 5) -> str:
         retriever = vector_store.as_retriever(search_kwargs={"k": max_results})
         
-        documents = retriever.get_relevant_documents(query)
+        documents = retriever.invoke(query)
         
         if not documents:
             return f"No movies found matching '{query}'"
@@ -61,7 +55,7 @@ class MovieRetrieverTool(BaseTool):
             if genre:
                 result += f"   Genre: {genre}\n"
             if plot:
-                plot_preview = plot[:300] + "..." if len(plot) > 300 else plot
+                plot_preview = plot[:800] + "..." if len(plot) > 800 else plot
                 result += f"   Plot: {plot_preview}\n"
             
             result += "\n"
