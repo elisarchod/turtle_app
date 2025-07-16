@@ -45,7 +45,6 @@ class ToolAgent:
                 goto=SUPERVISOR_NODE
             )
         except Exception as e:
-            # Use the error handler for consistent logging
             error_msg = f"ToolAgent error in {self.name}: {str(e)}"
             logger.error(error_msg)
             error_message = f"Error processing request with {self.name}: {str(e)}"
