@@ -19,11 +19,11 @@ poetry run pytest turtleapp/tests/test_api_endpoints.py
 # Run tests with coverage
 poetry run pytest --cov=turtleapp
 
-# Run tests in parallel
-poetry run pytest -n auto
-
 # Skip slow tests
 poetry run pytest -m "not slow"
+
+# Skip expensive tests (LLM calls)
+poetry run pytest -m "not expensive"
 ```
 
 ### Using pytest directly
@@ -50,6 +50,7 @@ pytest --cov=turtleapp --cov-report=html
 - `test_torrent.py` - Tests for torrent management functionality
 - `test_retriever.py` - Tests for movie retriever and RAG evaluation
 - `test_library_manager.py` - Tests for library scanning functionality
+- `test_graph_workflow.py` - Tests for graph workflow and tool routing
 
 ### Configuration
 
@@ -91,10 +92,24 @@ The test suite covers:
   - `test_list_torrents()` - Core function with mocked API
   - `test_tool_interface()` - Tool interface with graceful fallbacks
   - `test_error_handling()` - Service error handling validation
+  
+### Graph Workflow (`test_graph_workflow.py`)
+- **Tool Selection**: Tests that graph routes to correct agent based on user queries
+  - `test_movie_query_routes_to_movie_retriever()` - Movie plot queries route to movie retriever
+  - `test_torrent_query_routes_to_torrent_manager()` - Torrent queries route to torrent manager
+  - `test_library_query_routes_to_library_manager()` - Library queries route to library manager
+  - `test_finish_command_ends_workflow()` - FINISH command ends workflow
+- **Graph Structure**: Tests graph initialization and compilation
+  - `test_graph_initialization_has_all_agents()` - All required agents present
+  - `test_compiled_graph_properties()` - Correct graph properties
+- **Cost-effective**: All tests use mocks to avoid expensive LLM calls
 
 ## Test Markers
 
-- `@pytest.mark.asyncio` - Async tests (automatically handled by pytest-asyncio)
+- `@pytest.mark.slow` - Slow tests (deselect with `-m "not slow"`)
+- `@pytest.mark.expensive` - Tests that use real LLM calls (deselect with `-m "not expensive"`)
+
+Note: All tests automatically support async/await due to `asyncio_mode = "auto"` in pytest configuration.
 
 ## Fixtures
 
@@ -106,6 +121,11 @@ The test suite covers:
 - `torrent_tool()` - TorrentClientTool instance (`test_torrent.py`)
 - `library_manager_tool()` - LibraryManagerTool instance (`test_library_manager.py`)
 - `retriever_agent()` - ToolAgent with movie retriever (`test_retriever.py`)
+
+### Graph Testing Fixtures (`test_graph_workflow.py`)
+- `mock_components()` - Mock expensive components while preserving routing logic
+- `mock_llm()` - Mock LLM for testing
+- `mock_tool_agent()` - Mock tool agent
 
 ## Testing Approach
 
@@ -155,14 +175,13 @@ Tests automatically load environment variables from `.env` files. The test suite
 
 ## Performance
 
-- **Parallel execution**: Tests can run in parallel with `pytest -n auto`
-- **Async support**: Proper async testing with pytest-asyncio
+- **Async support**: All tests use async/await with `asyncio_mode = "auto"`
 - **Fast execution**: Simple tests without complex setup
 - **Resilient**: Work with or without external services
 
 ## Test Statistics
 
-- **Total tests**: 11
-- **Test files**: 4
+- **Total tests**: 18
+- **Test files**: 5
 - **Coverage**: Essential functionality focused on real user workflows
 - **Execution time**: ~30-40 seconds (depends on external service availability)
