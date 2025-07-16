@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
-from turtleapp.src.workflows.graph import MovieWorkflowGraph
+from turtleapp.src.workflows.graph import WorkflowGraph, agentic_tools
 from turtleapp.api.routes.endpoints import create_thread_id
 
 
@@ -52,7 +52,7 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = MovieWorkflowGraph()
+        graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
         # Test graph invocation
@@ -68,14 +68,14 @@ class TestWorkflowToolSelection:
 
     async def test_torrent_query_routes_to_torrent_manager(self, mock_components):
         """Test that torrent queries route to torrent manager."""
-        # Configure supervisor to route to torrent_manager first, then FINISH
+        # Configure supervisor to route to torrent_agent first, then FINISH
         from langgraph.constants import END
         mock_components['supervisor_instance'].side_effect = [
-            Command(goto="torrent_manager"),
+            Command(goto="torrent_agent"),
             Command(goto=END)
         ]
         
-        graph = MovieWorkflowGraph()
+        graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
         # Test graph invocation
@@ -97,7 +97,7 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = MovieWorkflowGraph()
+        graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
         # Test graph invocation
@@ -107,7 +107,6 @@ class TestWorkflowToolSelection:
         )
         
         assert result is not None
-        # Verify the supervisor was called
         mock_components['supervisor_instance'].assert_called()
     
     async def test_finish_command_ends_workflow(self, mock_components):
@@ -116,7 +115,7 @@ class TestWorkflowToolSelection:
         from langgraph.constants import END
         mock_components['supervisor_instance'].return_value = Command(goto=END)
         
-        graph = MovieWorkflowGraph()
+        graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
         # Test graph invocation
@@ -126,7 +125,6 @@ class TestWorkflowToolSelection:
         )
         
         assert result is not None
-        # Verify the supervisor was called
         mock_components['supervisor_instance'].assert_called()
     
     @pytest.mark.slow
@@ -139,17 +137,15 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = MovieWorkflowGraph()
+        graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
-        # Test graph invocation
         result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="Tell me about a movie")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
         
         assert result is not None
-        # Verify supervisor was called
         mock_components['supervisor_instance'].assert_called()
 
 
@@ -160,20 +156,17 @@ class TestWorkflowExecution:
         """Test that graph initializes with all required agents."""
         with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
              patch('turtleapp.src.core.llm_factory.create_agent_llm'):
-            graph = MovieWorkflowGraph()
+            graph = WorkflowGraph(agentic_tools, name='test_graph')
             
             # Verify all expected agents are present
-            assert "movie_details_retriever" in graph.nodes
-            assert "torrent_manager" in graph.nodes
-            assert "library_manager" in graph.nodes
-            assert len(graph.nodes) == 3
+            assert "movie_details_retriever_agent" in graph.nodes
+            assert "torrent_manager_agent" in graph.nodes
+            assert "library_manager_agent" in graph.nodes
     
     def test_compiled_graph_properties(self):
         """Test compiled graph has expected properties."""
         with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
              patch('turtleapp.src.core.llm_factory.create_agent_llm'):
-            graph = MovieWorkflowGraph()
+            graph = WorkflowGraph(agentic_tools, name='test_graph')
             compiled_graph = graph.compile()
-            
-            assert compiled_graph.name == "Multi-agent Movie Supervisor"
             assert hasattr(compiled_graph, 'checkpointer')

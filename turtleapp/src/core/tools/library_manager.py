@@ -4,6 +4,7 @@ from langchain_core.tools import Tool
 from langchain.tools import BaseTool
 
 from turtleapp.settings import settings
+from turtleapp.src.nodes import ToolAgent
 from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors
 from turtleapp.src.constants import DefaultValues, FileExtensions
 
@@ -60,7 +61,8 @@ class LibraryManagerTool(BaseTool):
         
         return result
 
-library_manager_tool: Tool = LibraryManagerTool()
+
+library_manager = ToolAgent([LibraryManagerTool()])
 
 if __name__ == "__main__":
     movies = scan_smb_movie_library()

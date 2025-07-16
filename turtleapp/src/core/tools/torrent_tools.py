@@ -4,6 +4,7 @@ from langchain.tools import BaseTool
 from typing import List, Dict, Any
 
 from turtleapp.settings import settings
+from turtleapp.src.nodes import ToolAgent
 from turtleapp.src.utils import handle_tool_errors, handle_service_errors
 
 URL = f"{settings.qbittorrent.host}/api/v2"
@@ -93,14 +94,11 @@ class TorrentSearchTool(BaseTool):
             result += f"... and {len(results) - 5} more available"
         
         return result
-    
 
-# Export tools for use in agents
-torrent_downloads_tool = TorrentDownloadsTool()
-torrent_search_tool = TorrentSearchTool()
+torrent_agent = ToolAgent([TorrentDownloadsTool(), TorrentSearchTool()],
+                          name="torrent_manager_agent")
 
 if __name__ == "__main__":
-    # Simple test
     downloads_tool = TorrentDownloadsTool()
     search_tool = TorrentSearchTool()
     print("Downloads:", downloads_tool._run(""))

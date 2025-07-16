@@ -7,24 +7,22 @@ from langgraph.graph import MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph_storage.checkpoint import InMemorySaver
 
+from turtleapp.src.core.tools import library_manager, movie_retriever,torrent_agent
 from turtleapp.src.nodes import ToolAgent, SupervisorNodeCreator
-from turtleapp.src.core.tools import movie_retriever_tool, torrent_downloads_tool, torrent_search_tool, library_manager_tool
+
 from turtleapp.src.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_supervisor_llm
 from turtleapp.src.utils import logger
 
 
-class MovieWorkflowGraph:
+class WorkflowGraph:
     """Multi-agent workflow graph for home theater management."""
 
-    def __init__(self) -> None:
+    def __init__(self, tools: Dict[str, ToolAgent], name: str) -> None:
         self.supervisor_llm = create_supervisor_llm()
-        
-        self.nodes: Dict[str, ToolAgent] = {
-            movie_retriever_tool.name: ToolAgent([movie_retriever_tool]),
-            "torrent_manager": ToolAgent([torrent_downloads_tool, torrent_search_tool], name="torrent_manager_agent"),
-            library_manager_tool.name: ToolAgent([library_manager_tool])
-        }
+
+        self.name: str = name
+        self.nodes: Dict[str, ToolAgent] = tools
     
     def compile(self) -> CompiledStateGraph:
         builder = StateGraph(MessagesState)
@@ -40,16 +38,24 @@ class MovieWorkflowGraph:
             builder.add_node(agent_name, agent.process)
         
         compiled_graph = builder.compile(checkpointer=InMemorySaver())
-        compiled_graph.name = "Multi-agent Movie Supervisor"
+        compiled_graph.name = self.name
         return compiled_graph
 
-movie_workflow_agent: CompiledStateGraph = MovieWorkflowGraph().compile()
 
+agentic_tools = {
+    movie_retriever.name: movie_retriever,
+    torrent_agent.name:   torrent_agent,
+    library_manager.name: library_manager
+    }
+
+graph_name = "Multi-agent Movie Supervisor"
+movie_workflow_graph: CompiledStateGraph = WorkflowGraph(tools=agentic_tools,
+                                                         name=graph_name).compile()
 
 if __name__ == '__main__':
-    config = {"configurable": {"thread_id": "gen_int_13"}}
-    result = movie_workflow_agent.invoke(
+
+    result = movie_workflow_graph.ainvoke(
         {"messages": "tell me the plot of terminator 2 ?"},
-        config=config
+        config={"configurable": {"thread_id": "gen_int_13"}}
     )
     logger.info(f"Workflow result: {result['messages'][-1].content}")

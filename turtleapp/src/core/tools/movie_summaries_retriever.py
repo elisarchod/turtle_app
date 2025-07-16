@@ -4,6 +4,7 @@ from langchain_pinecone import PineconeVectorStore
 from langchain.tools import BaseTool
 
 from turtleapp.settings import settings
+from turtleapp.src.nodes import ToolAgent
 from turtleapp.src.utils import logger, handle_tool_errors
 
 vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
@@ -62,8 +63,9 @@ class MovieRetrieverTool(BaseTool):
         
         return result
 
-movie_retriever_tool: Tool = MovieRetrieverTool()
+movie_retriever = ToolAgent([MovieRetrieverTool()])
+
 
 if __name__ == "__main__":
-    query = "Inception"
-    logger.info(movie_retriever_tool._run(query, max_results=3))
+    query = "a weird movie about dreams"
+    logger.info(MovieRetrieverTool()._run(query, max_results=3))
