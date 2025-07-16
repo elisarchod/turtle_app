@@ -1,10 +1,12 @@
 """Tool agent implementation for the turtle app."""
 
 from typing import Literal, List
-from langchain_core.messages import HumanMessage, SystemMessage
+
+from langchain.agents import create_react_agent
+from langchain_core.messages import HumanMessage
+from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import Tool
 from langgraph.graph import MessagesState
-from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command
 
 from turtleapp.src.constants import SUPERVISOR_NODE
@@ -30,13 +32,19 @@ class ToolAgent:
             f"- Use the appropriate tool based on the user's request\n"
             f"- Provide accurate and complete results\n"
             f"- If multiple tools are available, choose the most relevant one\n"
-            f"- Always execute the tool to completion before responding"
+            f"- Always execute the tool to completion before responding\n\n"
+            f"{{input}}\n\n{{agent_scratchpad}}"
+        )
+        
+        prompt = PromptTemplate(
+            template=description,
+            input_variables=["input", "agent_scratchpad"]
         )
         
         self.agent = create_react_agent(
-            self.llm,
+            llm=self.llm,
             tools=self.tools,
-            state_modifier=SystemMessage(description)
+            prompt=prompt
         )
         self.agent.name = self.name
 

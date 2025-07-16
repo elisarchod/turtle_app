@@ -9,7 +9,7 @@ turtle-app-ep = "turtleapp.api.routes.endpoints:app"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-langgraph = "^0.2.53"
+langgraph = ">=0.2.53"
 langsmith = ">=0.3.45"
 langchain-pinecone = "^0.2.0"
 langchain-openai = "^0.2.11"
@@ -20,7 +20,6 @@ langchain-community = "^0.3.10"
 fastapi = "^0.115.6"
 langgraph-cli = {extras = ["inmem"], version = "^0.1.65"}
 pysmb = "^1.2.9"
-pandas = "^2.0.0"
 duckdb = "^0.9.0"
 langchain-anthropic = "^0.3.17"
 
@@ -38,13 +37,14 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 testpaths = ["turtleapp/tests"]
 addopts = ["-v", "--color=yes", "--log-cli-level=INFO"]
+asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning"
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "asyncio: marks tests as async"
+    "expensive: marks tests that use real LLM calls (deselect with '-m \"not expensive\"')"
 ]
 
 
