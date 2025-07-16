@@ -29,8 +29,7 @@ def get_torrents(filter_downloading: bool = False) -> List[Dict[str, Any]]:
     
     if filter_downloading:
         torrents = [t for t in torrents if t.get('state') in ['downloading', 'stalledDL']]
-    
-    # Simplify torrent info for LLM consumption
+
     for torrent in torrents:
         torrent['progress_percent'] = round(torrent.get('progress', 0) * 100, 2)
     
@@ -41,9 +40,9 @@ def search_torrents(query: str) -> List[Dict[str, Any]]:
     response = api_call('/search/start', {'pattern': query, 'plugins': 'all', 'category': 'all'})
     response.raise_for_status()
     search_id = response.json()['id']
-    
-    time.sleep(5)  # Wait for search to complete
-    
+
+    time.sleep(5)
+
     response = api_call('/search/results', {'search_id': search_id})
     
     if response.status_code == 200:
@@ -68,9 +67,7 @@ class TorrentDownloadsTool(BaseTool):
             result += f"- {t['name']} ({status})\n"
         
         return result
-    
-    async def _arun(self, query: str = "") -> str:
-        return self._run(query)
+
 
 
 class TorrentSearchTool(BaseTool):
@@ -97,8 +94,6 @@ class TorrentSearchTool(BaseTool):
         
         return result
     
-    async def _arun(self, search_term: str) -> str:
-        return self._run(search_term)
 
 # Export tools for use in agents
 torrent_downloads_tool = TorrentDownloadsTool()
