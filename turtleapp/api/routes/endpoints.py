@@ -18,8 +18,9 @@ app = FastAPI(
 def create_thread_id() -> str:
     """Generate a unique thread ID with datetime prefix and UUID."""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    uuid_part = str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for brevity
-    return f"{timestamp}_{uuid_part}"
+    uuid_part = uuid.uuid4()  # Use first 8 chars of UUID for brevity
+    # return f"{timestamp}_{str(uuid.uuid4())[:8]}"
+    return uuid_part
 
 class ChatRequest(BaseModel):
     message: str = Field(..., description="The user's message or question", min_length=1)

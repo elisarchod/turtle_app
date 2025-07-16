@@ -4,9 +4,8 @@ from langchain_core.tools import Tool
 from langchain.tools import BaseTool
 
 from turtleapp.settings import settings
-from turtleapp.src.utils import logger
+from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors
 from turtleapp.src.constants import DefaultValues, FileExtensions
-from turtleapp.src.utils.error_handler import handle_tool_errors, handle_service_errors
 
 import os
 import re
@@ -43,16 +42,12 @@ class LibraryManagerTool(BaseTool):
     @handle_tool_errors(default_return="Library scan failed")
     def _run(self) -> str:
         movies_paths = scan_smb_movie_library()
-        
-        if not movies_paths:
-            return "No movies found in library"
-        
         total_movies = len(movies_paths)
         file_extensions = {}
         for movie_name, file_path in movies_paths.items():
             ext = os.path.splitext(file_path)[1].lower()
             file_extensions[ext] = file_extensions.get(ext, 0) + 1
-        
+
         result = f"Library scan completed. Found {total_movies} movies.\n"
         result += f"File types: {', '.join([f'{ext}: {count}' for ext, count in file_extensions.items()])}\n"
         result += "Sample movies:\n"

@@ -5,6 +5,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph_storage.checkpoint import InMemorySaver
 
 from turtleapp.src.nodes import ToolAgent, SupervisorNodeCreator
 from turtleapp.src.core.tools import movie_retriever_tool, torrent_downloads_tool, torrent_search_tool, library_manager_tool
@@ -38,7 +39,7 @@ class MovieWorkflowGraph:
         for agent_name, agent in self.nodes.items():
             builder.add_node(agent_name, agent.process)
         
-        compiled_graph = builder.compile(checkpointer=MemorySaver())
+        compiled_graph = builder.compile(checkpointer=InMemorySaver())
         compiled_graph.name = "Multi-agent Movie Supervisor"
         return compiled_graph
 

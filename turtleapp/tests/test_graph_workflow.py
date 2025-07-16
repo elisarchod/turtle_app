@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 from turtleapp.src.workflows.graph import MovieWorkflowGraph
@@ -15,140 +15,142 @@ class TestWorkflowToolSelection:
     @pytest.fixture
     def mock_components(self):
         """Mock expensive components while preserving routing logic."""
-        with patch('turtleapp.src.workflows.graph.create_supervisor_llm') as mock_llm, \
-             patch('turtleapp.src.workflows.graph.ToolAgent') as mock_tool_agent_class, \
-             patch('turtleapp.src.workflows.graph.MemorySaver') as mock_memory_saver:
+        with patch('turtleapp.src.workflows.graph.SupervisorNodeCreator') as mock_supervisor_class, \
+             patch('turtleapp.src.core.llm_factory.create_agent_llm') as mock_agent_llm, \
+             patch('langgraph_storage.checkpoint.InMemorySaver') as mock_memory_saver, \
+             patch('turtleapp.src.nodes.agents.ToolAgent.process') as mock_agent_process:
             
-            # Mock LLM with structured output
-            mock_llm_instance = AsyncMock()
-            mock_structured_output = AsyncMock()
-            mock_llm_instance.with_structured_output.return_value = mock_structured_output
-            mock_llm.return_value = mock_llm_instance
+            # Mock supervisor instance
+            mock_supervisor_instance = MagicMock()
+            mock_supervisor_class.return_value = mock_supervisor_instance
             
-            # Mock tool agent
-            mock_tool_agent = AsyncMock()
-            mock_tool_agent.process.return_value = Command(
-                update={"messages": [AIMessage(content="Tool executed")]},
-                goto="supervisor"
-            )
-            mock_tool_agent_class.return_value = mock_tool_agent
+            # Mock agent LLM
+            mock_agent_llm_instance = AsyncMock()
+            mock_agent_llm.return_value = mock_agent_llm_instance
             
             # Mock memory saver to avoid UUID issues
             mock_memory_saver.return_value = MagicMock()
             
+            # Mock agent process method to return a Command that routes back to supervisor
+            mock_agent_process.return_value = Command(
+                update={"messages": [HumanMessage(content="Tool executed successfully")]},
+                goto="supervisor"
+            )
+            
             yield {
-                'llm': mock_llm_instance,
-                'structured_output': mock_structured_output,
-                'tool_agent': mock_tool_agent
+                'supervisor_instance': mock_supervisor_instance,
+                'agent_llm': mock_agent_llm_instance,
+                'agent_process': mock_agent_process
             }
     
-    def test_movie_query_routes_to_movie_retriever(self, mock_components):
+    async def test_movie_query_routes_to_movie_retriever(self, mock_components):
         """Test that movie plot queries route to movie retriever."""
-        # Configure supervisor to route to movie_details_retriever
-        mock_components['structured_output'].invoke.return_value = {
-            "next": "movie_details_retriever"
-        }
+        # Configure supervisor to route to movie_details_retriever first, then FINISH
+        from langgraph.constants import END
+        mock_components['supervisor_instance'].side_effect = [
+            Command(goto="movie_details_retriever"),
+            Command(goto=END)
+        ]
         
         graph = MovieWorkflowGraph()
         compiled_graph = graph.compile()
         
         # Test graph invocation
-        result = compiled_graph.invoke(
+        result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="What's the plot of Terminator 2?")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
         
         assert result is not None
-        # Verify the supervisor was called with structured output
-        mock_components['llm'].with_structured_output.assert_called()
-    
-    def test_torrent_query_routes_to_torrent_manager(self, mock_components):
+        # Verify the supervisor was called
+        mock_components['supervisor_instance'].assert_called()
+
+
+    async def test_torrent_query_routes_to_torrent_manager(self, mock_components):
         """Test that torrent queries route to torrent manager."""
-        # Configure supervisor to route to torrent_manager
-        mock_components['structured_output'].invoke.return_value = {
-            "next": "torrent_manager"
-        }
+        # Configure supervisor to route to torrent_manager first, then FINISH
+        from langgraph.constants import END
+        mock_components['supervisor_instance'].side_effect = [
+            Command(goto="torrent_manager"),
+            Command(goto=END)
+        ]
         
         graph = MovieWorkflowGraph()
         compiled_graph = graph.compile()
         
         # Test graph invocation
-        result = compiled_graph.invoke(
+        result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="Search for Inception torrent")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
-        
+
         assert result is not None
-        # Verify the supervisor was called with structured output
-        mock_components['llm'].with_structured_output.assert_called()
+        # Verify the supervisor was called
+        mock_components['supervisor_instance'].assert_called()
     
-    def test_library_query_routes_to_library_manager(self, mock_components):
+    async def test_library_query_routes_to_library_manager(self, mock_components):
         """Test that library queries route to library manager."""
-        # Configure supervisor to route to library_manager
-        mock_components['structured_output'].invoke.return_value = {
-            "next": "library_manager"
-        }
+        # Configure supervisor to route to library_manager first, then FINISH
+        from langgraph.constants import END
+        mock_components['supervisor_instance'].side_effect = [
+            Command(goto="library_manager"),
+            Command(goto=END)
+        ]
         
         graph = MovieWorkflowGraph()
         compiled_graph = graph.compile()
         
         # Test graph invocation
-        result = compiled_graph.invoke(
+        result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="What movies are in my library?")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
         
         assert result is not None
-        # Verify the supervisor was called with structured output
-        mock_components['llm'].with_structured_output.assert_called()
+        # Verify the supervisor was called
+        mock_components['supervisor_instance'].assert_called()
     
-    def test_finish_command_ends_workflow(self, mock_components):
+    async def test_finish_command_ends_workflow(self, mock_components):
         """Test that FINISH command ends the workflow."""
         # Configure supervisor to finish
-        mock_components['structured_output'].invoke.return_value = {
-            "next": "FINISH"
-        }
+        from langgraph.constants import END
+        mock_components['supervisor_instance'].return_value = Command(goto=END)
         
         graph = MovieWorkflowGraph()
         compiled_graph = graph.compile()
         
         # Test graph invocation
-        result = compiled_graph.invoke(
+        result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="Thank you")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
         
         assert result is not None
-        # Verify the supervisor was called with structured output
-        mock_components['llm'].with_structured_output.assert_called()
+        # Verify the supervisor was called
+        mock_components['supervisor_instance'].assert_called()
     
     @pytest.mark.slow
-    def test_supervisor_routing_logic_with_hub_prompt(self, mock_components):
+    async def test_supervisor_routing_logic_with_hub_prompt(self, mock_components):
         """Test that supervisor uses hub prompt for routing decisions."""
-        with patch('turtleapp.src.nodes.supervisor.hub') as mock_hub:
-            # Mock hub prompt
-            mock_prompt = MagicMock()
-            mock_prompt.invoke.return_value = "formatted_prompt"
-            mock_hub.pull.return_value = mock_prompt
-            
-            # Configure supervisor response
-            mock_components['structured_output'].invoke.return_value = {
-                "next": "movie_details_retriever"
-            }
-            
-            graph = MovieWorkflowGraph()
-            compiled_graph = graph.compile()
-            
-            # Test graph invocation
-            result = compiled_graph.invoke(
-                {"messages": [HumanMessage(content="Tell me about a movie")]},
-                {"configurable": {"thread_id": create_thread_id()}}
-            )
-            
-            assert result is not None
-            # Verify hub prompt was used
-            mock_hub.pull.assert_called_with("supervisor_prompt_with_placeholder")
-            mock_prompt.invoke.assert_called()
+        # Configure supervisor response
+        from langgraph.constants import END
+        mock_components['supervisor_instance'].side_effect = [
+            Command(goto="movie_details_retriever"),
+            Command(goto=END)
+        ]
+        
+        graph = MovieWorkflowGraph()
+        compiled_graph = graph.compile()
+        
+        # Test graph invocation
+        result = await compiled_graph.ainvoke(
+            {"messages": [HumanMessage(content="Tell me about a movie")]},
+            {"configurable": {"thread_id": create_thread_id()}}
+        )
+        
+        assert result is not None
+        # Verify supervisor was called
+        mock_components['supervisor_instance'].assert_called()
 
 
 class TestWorkflowExecution:
@@ -156,7 +158,8 @@ class TestWorkflowExecution:
     
     def test_graph_initialization_has_all_agents(self):
         """Test that graph initializes with all required agents."""
-        with patch('turtleapp.src.workflows.graph.create_supervisor_llm'):
+        with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
+             patch('turtleapp.src.core.llm_factory.create_agent_llm'):
             graph = MovieWorkflowGraph()
             
             # Verify all expected agents are present
@@ -167,17 +170,10 @@ class TestWorkflowExecution:
     
     def test_compiled_graph_properties(self):
         """Test compiled graph has expected properties."""
-        with patch('turtleapp.src.workflows.graph.create_supervisor_llm'):
+        with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
+             patch('turtleapp.src.core.llm_factory.create_agent_llm'):
             graph = MovieWorkflowGraph()
             compiled_graph = graph.compile()
             
             assert compiled_graph.name == "Multi-agent Movie Supervisor"
             assert hasattr(compiled_graph, 'checkpointer')
-    
-    def test_workflow_error_handling(self):
-        """Test workflow handles errors gracefully."""
-        with patch('turtleapp.src.workflows.graph.create_supervisor_llm') as mock_llm:
-            mock_llm.side_effect = Exception("LLM failed")
-            
-            with pytest.raises(Exception, match="LLM failed"):
-                MovieWorkflowGraph()

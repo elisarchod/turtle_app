@@ -4,7 +4,7 @@ from langchain.tools import BaseTool
 from typing import List, Dict, Any
 
 from turtleapp.settings import settings
-from turtleapp.src.utils.error_handler import handle_tool_errors, handle_service_errors
+from turtleapp.src.utils import handle_tool_errors, handle_service_errors
 
 URL = f"{settings.qbittorrent.host}/api/v2"
 HEADERS = {'Referer': settings.qbittorrent.host}

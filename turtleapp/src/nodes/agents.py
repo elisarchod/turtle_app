@@ -4,10 +4,10 @@ from typing import Literal, List
 
 from langchain.agents import create_react_agent
 from langchain_core.messages import HumanMessage
-from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import Tool
 from langgraph.graph import MessagesState
 from langgraph.types import Command
+from langchain import hub
 
 from turtleapp.src.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
@@ -23,23 +23,7 @@ class ToolAgent:
         self.name = name or f"{tools[0].name}_agent"
             
         logger.info(f"Initializing {self.name}")
-        
-        tool_descriptions = [f"- {tool.name}: {tool.description}" for tool in self.tools]
-        description = (
-            f"You are a specialized execution agent with access to the following tools:\n"
-            f"{chr(10).join(tool_descriptions)}\n\n"
-            f"Instructions:\n"
-            f"- Use the appropriate tool based on the user's request\n"
-            f"- Provide accurate and complete results\n"
-            f"- If multiple tools are available, choose the most relevant one\n"
-            f"- Always execute the tool to completion before responding\n\n"
-            f"{{input}}\n\n{{agent_scratchpad}}"
-        )
-        
-        prompt = PromptTemplate(
-            template=description,
-            input_variables=["input", "agent_scratchpad"]
-        )
+        prompt = hub.pull("hwchase17/react")
         
         self.agent = create_react_agent(
             llm=self.llm,
