@@ -12,11 +12,15 @@ from turtleapp.src.utils import logger
 
 app = FastAPI(
     title="Turtle App - Home Theater Assistant",
-    description="AI-powered home theater management system with multi-agent orchestration",
-    version="1.0.0"
+    description="AI-powered home theater management system with multi-agent orchestration"
 )
 
-# Request/Response Models
+def create_thread_id() -> str:
+    """Generate a unique thread ID with datetime prefix and UUID."""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    uuid_part = str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for brevity
+    return f"{timestamp}_{uuid_part}"
+
 class ChatRequest(BaseModel):
     message: str = Field(..., description="The user's message or question", min_length=1)
     thread_id: Optional[str] = Field(None, description="Optional thread ID for conversation continuity")
@@ -54,7 +58,7 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
     
     try:
         if not thread_id:
-            thread_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+            thread_id = create_thread_id()
         
         config = {ConfigKeys.CONFIGURABLE.value: {ConfigKeys.THREAD_ID.value: thread_id}}
         
