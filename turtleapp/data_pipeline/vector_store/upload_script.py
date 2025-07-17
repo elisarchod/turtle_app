@@ -5,7 +5,6 @@ from turtleapp.settings import settings
 async def main() -> None:
     loader = MovieDataLoader()
     documents = loader.load_documents(settings.data.movie_plots_path)
-    doc = documents[1]
     uploader = PineconeVectorStoreManager()
     await uploader.upload_documents(documents)
 

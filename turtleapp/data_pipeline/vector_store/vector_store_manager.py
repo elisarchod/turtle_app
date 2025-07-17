@@ -17,7 +17,7 @@ from turtleapp.settings import settings
 
 logger = logging.getLogger(__name__)
 
-MAX_DOCUMENTS = 300
+MAX_DOCUMENTS = 3000
 METADATA_DELIMITER = " | "
 
 class MovieDataLoader:
