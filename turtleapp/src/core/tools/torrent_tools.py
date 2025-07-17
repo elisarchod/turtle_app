@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 
 from turtleapp.settings import settings
 from turtleapp.src.nodes import ToolAgent
-from turtleapp.src.utils import handle_tool_errors, handle_service_errors
+from turtleapp.src.utils import handle_tool_errors, handle_service_errors, clean_movie_filename
 
 URL = f"{settings.qbittorrent.host}/api/v2"
 HEADERS = {'Referer': settings.qbittorrent.host}
@@ -27,13 +27,14 @@ def api_call(endpoint: str, data: dict = None) -> requests.Response:
 def get_torrents(filter_downloading: bool = False) -> List[Dict[str, Any]]:
     response = api_call('/torrents/info')
     torrents = response.json()
-    
+    tort = torrents[3]
+
     if filter_downloading:
-        torrents = [t for t in torrents if t.get('state') in ['downloading', 'stalledDL']]
+        torrents = [t for t in torrents if t.get('progress') != 1]
 
     for torrent in torrents:
         torrent['progress_percent'] = round(torrent.get('progress', 0) * 100, 2)
-    
+        torrent['name'] = clean_movie_filename(torrent.get('name', 'Unknown'))
     return torrents
 
 @handle_service_errors(service_name="TorrentAPI", default_return=[])
@@ -73,7 +74,7 @@ class TorrentDownloadsTool(BaseTool):
 
 class TorrentSearchTool(BaseTool):
     name: str = "torrent_search"
-    description: str = "Search for movie torrents by title or keyword."
+    description: str = "Search for movie downloads by title or keyword."
     
     @handle_tool_errors(default_return="Torrent service unavailable")
     def _run(self, search_term: str) -> str:
@@ -94,8 +95,9 @@ class TorrentSearchTool(BaseTool):
         
         return result
 
-torrent_agent = ToolAgent([TorrentDownloadsTool(), TorrentSearchTool()],
-                          name="torrent_manager_agent")
+torrent_agent = ToolAgent([TorrentDownloadsTool(),
+                           TorrentSearchTool()],
+                          name="movies_download_manager_agent")
 
 if __name__ == "__main__":
     downloads_tool = TorrentDownloadsTool()

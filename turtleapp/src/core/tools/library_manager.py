@@ -4,17 +4,11 @@ from langchain_core.tools import Tool, BaseTool
 
 from turtleapp.settings import settings
 from turtleapp.src.nodes import ToolAgent
-from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors
+from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors, clean_movie_filename
 from turtleapp.src.constants import DefaultValues, FileExtensions
 
 import os
-import re
 
-
-def clean_movie_filename(filename: str) -> str:
-    name_without_ext = os.path.splitext(filename)[0]
-    clean = re.sub(r'[^a-zA-Z0-9\s]', '', name_without_ext)
-    return re.sub(r'^(.{5}.*?\d{4}).*|^(.{30}).*', r'\1\2', clean)
 
 
 @handle_service_errors(service_name="LibraryManager", default_return={})
