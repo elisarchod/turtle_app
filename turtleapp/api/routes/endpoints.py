@@ -1,26 +1,18 @@
-from datetime import time
 from datetime import datetime
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-import uuid
-from typing import Optional
 
-from turtleapp.src.workflows.graph import movie_workflow_agent
 from turtleapp.src.constants import ConfigKeys
-from turtleapp.src.utils import logger
+from turtleapp.src.utils import logger, create_thread_id
+from turtleapp.src.workflows.graph import movie_workflow_graph
 
 app = FastAPI(
     title="Turtle App - Home Theater Assistant",
     description="AI-powered home theater management system with multi-agent orchestration"
 )
 
-def create_thread_id() -> str:
-    """Generate a unique thread ID with datetime prefix and UUID."""
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    uuid_part = uuid.uuid4()  # Use first 8 chars of UUID for brevity
-    # return f"{timestamp}_{str(uuid.uuid4())[:8]}"
-    return uuid_part
 
 class ChatRequest(BaseModel):
     message: str = Field(..., description="The user's message or question", min_length=1)
@@ -49,8 +41,9 @@ async def health_check():
     )
 
 
-
-@app.post("/chat", response_model=ChatResponse, responses={500: {"model": ErrorResponse}})
+@app.post("/chat",
+          response_model=ChatResponse,
+          responses={500: {"model": ErrorResponse}})
 async def chat(request: ChatRequest):
     return await _process_chat_request(request.message, request.thread_id)
 
@@ -59,11 +52,12 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
     
     try:
         if not thread_id:
+            logger.info("No thread ID provided, generating new one.")
             thread_id = create_thread_id()
         
         config = {ConfigKeys.CONFIGURABLE.value: {ConfigKeys.THREAD_ID.value: thread_id}}
         
-        result = await movie_workflow_agent.ainvoke({ConfigKeys.MESSAGES.value: message}, config=config)
+        result = await movie_workflow_graph.ainvoke({ConfigKeys.MESSAGES.value: message}, config=config)
         logger.info(f"Workflow completed successfully for thread: {thread_id}")
         
         # Extract response from workflow result

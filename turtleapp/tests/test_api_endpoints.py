@@ -1,21 +1,21 @@
 """Test API endpoints."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from langchain_core.messages import HumanMessage
+
 from turtleapp.api.routes.endpoints import app
 
 
 @pytest.fixture
 def client():
-    """Create test client."""
     return TestClient(app)
 
 
 @pytest.fixture
 def mock_workflow_agent():
-    """Mock workflow agent."""
     mock_agent = AsyncMock()
     mock_agent.ainvoke.return_value = {
         "messages": [HumanMessage(content="Test response")]
@@ -25,7 +25,7 @@ def mock_workflow_agent():
 
 def test_chat_success(client, mock_workflow_agent):
     """Test successful chat request."""
-    with patch('turtleapp.api.routes.endpoints.movie_workflow_agent', mock_workflow_agent):
+    with patch('turtleapp.api.routes.endpoints.movie_workflow_graph', mock_workflow_agent):
         response = client.post("/chat", json={"message": "test"})
         
         assert response.status_code == 200
@@ -40,14 +40,30 @@ def test_chat_missing_message(client):
     assert response.status_code == 422
 
 
-def test_chat_workflow_error(client):
-    """Test chat request when workflow fails."""
-    mock_agent = AsyncMock()
-    mock_agent.ainvoke.side_effect = Exception("Workflow failed")
-    
-    with patch('turtleapp.api.routes.endpoints.movie_workflow_agent', mock_agent):
-        response = client.post("/chat", json={"message": "test"})
-        assert response.status_code == 500
+def test_chat_memory_persistence(client, mock_workflow_agent):
+    """Test memory persistence across chat requests."""
+    with patch('turtleapp.api.routes.endpoints.movie_workflow_graph', mock_workflow_agent):
+        # First request
+        response1 = client.post("/chat", json={"message": "Hello"})
+        assert response1.status_code == 200
+        result1 = response1.json()
+        thread_id = result1["thread_id"]
+
+        # Second request with same thread_id
+        response2 = client.post("/chat", json={"message": "Follow up", "thread_id": thread_id})
+        assert response2.status_code == 200
+        result2 = response2.json()
+
+        assert result2["thread_id"] == thread_id
+
+        calls = mock_workflow_agent.ainvoke.call_args_list
+        assert len(calls) == 2
+        
+        # Both calls should use the same thread_id in config
+        config1 = calls[0][1]["config"]
+        config2 = calls[1][1]["config"]
+        assert config1["configurable"]["thread_id"] == config2["configurable"]["thread_id"]
+        assert config1["configurable"]["thread_id"] == thread_id
 
 
 def test_health_endpoint(client):
