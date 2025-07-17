@@ -5,11 +5,14 @@ from langchain_core.tools import Tool, BaseTool
 from turtleapp.settings import settings
 from turtleapp.src.nodes import ToolAgent
 from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors, clean_movie_filename
-from turtleapp.src.constants import DefaultValues, FileExtensions
+from turtleapp.src.constants import DefaultValues
 
 import os
 
 
+class FileExtensions:
+    """Supported file extensions."""
+    MOVIE_EXTENSIONS = ('.mkv', '.mp4', '.avi', '.mov', '.wmv')
 
 @handle_service_errors(service_name="LibraryManager", default_return={})
 def scan_smb_movie_library() -> Dict[str, str]:
