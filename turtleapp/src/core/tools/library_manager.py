@@ -1,7 +1,6 @@
 from typing import Any, Dict, List
 import smbclient as smb_client
-from langchain_core.tools import Tool
-from langchain.tools import BaseTool
+from langchain_core.tools import Tool, BaseTool
 
 from turtleapp.settings import settings
 from turtleapp.src.nodes import ToolAgent

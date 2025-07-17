@@ -1,6 +1,6 @@
 import requests
 import time
-from langchain.tools import BaseTool
+from langchain_core.tools import BaseTool
 from typing import List, Dict, Any
 
 from turtleapp.settings import settings
@@ -85,7 +85,6 @@ class TorrentSearchTool(BaseTool):
         if not results:
             return f"No torrents found for '{search_term}'"
         
-        # Return simple list of first 5 results
         result = f"Found torrents for '{search_term}':\n"
         for i, item in enumerate(results[:5], 1):
             result += f"{i}. {item.get('fileName', 'Unknown')}\n"
