@@ -4,9 +4,8 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from turtleapp.src.constants import ConfigKeys
-from turtleapp.src.utils import logger, create_thread_id
-from turtleapp.src.workflows.graph import movie_workflow_graph
+from turtleapp.src.utils import logger
+from turtleapp.src.workflows.graph import movie_workflow_agent
 
 app = FastAPI(
     title="Turtle App - Home Theater Assistant",
@@ -51,17 +50,12 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
     logger.info(f"Received request: {message}")
     
     try:
-        if not thread_id:
-            logger.info("No thread ID provided, generating new one.")
-            thread_id = create_thread_id()
+        result, used_thread_id = await movie_workflow_agent.invoke_with_thread(message, thread_id)
         
-        config = {ConfigKeys.CONFIGURABLE.value: {ConfigKeys.THREAD_ID.value: thread_id}}
-        
-        result = await movie_workflow_graph.ainvoke({ConfigKeys.MESSAGES.value: message}, config=config)
-        logger.info(f"Workflow completed successfully for thread: {thread_id}")
+        logger.info(f"Workflow completed successfully for thread: {used_thread_id}")
         
         # Extract response from workflow result
-        messages = result.get(ConfigKeys.MESSAGES.value, [])
+        messages = result.get("messages", [])
         if messages:
             last_message = messages[-1]
             response_content = last_message.content
@@ -70,7 +64,7 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
         
         return ChatResponse(
             response=response_content,
-            thread_id=thread_id
+            thread_id=used_thread_id
         )
     
     except Exception as e:
@@ -80,7 +74,10 @@ async def _process_chat_request(message: str, thread_id: Optional[str] = None) -
             detail=f"Failed to process request: {str(e)}"
         )
 
-if __name__ == "__main__":
+def main():
     import uvicorn
     logger.info("Starting FastAPI server...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()

@@ -13,4 +13,4 @@ RUN poetry config virtualenvs.create false \
 
 EXPOSE 8000
 
-CMD ["poetry", "run", "turtle-app-ep"]
+CMD ["poetry", "run", "turtle-app-server"]

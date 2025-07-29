@@ -139,7 +139,6 @@ graph LR
 - Applied across all tool implementations
 
 **Constants** (`turtleapp/src/constants.py`):
-- **Simplified Architecture**: Removed unnecessary `ConfigKeys` enum for cleaner code
 - Centralized configuration constants with `SUPERVISOR_NODE` and `DefaultValues`
 - Node names, file extensions, and default values
 - Eliminated verbose enum wrappers in favor of direct string literals
@@ -205,6 +204,26 @@ sequenceDiagram
   LM ->> S: Found "Empire Strikes Back"
   S ->> U: Star Wars torrents found. You have "Empire Strikes Back" locally.
 ```
+
+## 🧠 Design Assumptions & Model Selection
+
+### Why Different Models for Different Roles?
+
+**Supervisor Agent: Claude 3.5 Sonnet**
+- Handles complex reasoning and routing decisions
+- Needs sophisticated understanding to route between agents correctly
+
+**Tool Agents: Claude 3.5 Haiku** 
+- Optimized for speed and cost on focused tasks
+- Multiple calls per request, so cost efficiency matters
+- Sufficient capability for single-domain operations (movies, torrents, library)
+
+**Embeddings: OpenAI `text-embedding-3-large`**
+- Claude doesn't offer embedding models yet
+- OpenAI provides best-in-class semantic search for movie content
+- 3072 dimensions give rich representation for movie plot similarity
+
+This multi-model approach balances cost, performance, and quality across the system's different needs.
 
 ## 🛠️ Technology Stack
 
