@@ -2,7 +2,7 @@
 
 from typing import Literal, List
 
-from langchain.agents import create_react_agent
+from langchain.agents import create_react_agent, AgentExecutor
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import Tool
 from langgraph.graph import MessagesState
@@ -11,6 +11,7 @@ from langchain import hub
 
 from turtleapp.src.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
+from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool, torrent_download_tool, torrent_search_tool
 from turtleapp.src.utils import logger
 
 
@@ -25,10 +26,18 @@ class ToolAgent:
         logger.info(f"Initializing {self.name}")
         prompt = hub.pull("hwchase17/react")
         
-        self.agent = create_react_agent(
+        react_agent = create_react_agent(
             llm=self.llm,
             tools=self.tools,
             prompt=prompt
+        )
+        
+        self.agent = AgentExecutor(
+            agent=react_agent, 
+            tools=self.tools, 
+            verbose=True,
+            handle_parsing_errors=True,
+            max_iterations=3
         )
         self.agent.name = self.name
 
@@ -36,8 +45,11 @@ class ToolAgent:
         logger.info(f"Processing request with {self.name}")
         
         try:
-            result = await self.agent.ainvoke(state)
-            content = result["messages"][-1].content
+            # Extract the latest message content
+            latest_message = state["messages"][-1].content
+            
+            result = await self.agent.ainvoke({"input": latest_message})
+            content = result["output"]
             logger.info(f"ToolAgent {self.name} completed processing")
             
             return Command(
@@ -53,3 +65,7 @@ class ToolAgent:
                 goto=SUPERVISOR_NODE
             )
 
+
+movie_retriever_agent = ToolAgent([movie_retriever_tool]) # , "movie_details_retriever"
+library_manager_agent = ToolAgent([library_manager_tool]) # , "movie_library_manager"
+torrent_agent = ToolAgent([torrent_download_tool, torrent_search_tool], name="movies_download_manager")

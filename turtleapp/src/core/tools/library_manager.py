@@ -1,13 +1,12 @@
-from typing import Any, Dict, List
+import os
+from typing import Dict
+
 import smbclient as smb_client
-from langchain_core.tools import Tool, BaseTool
+from langchain_core.tools import BaseTool
 
 from turtleapp.settings import settings
-from turtleapp.src.nodes import ToolAgent
-from turtleapp.src.utils import logger, handle_tool_errors, handle_service_errors, clean_movie_filename
 from turtleapp.src.constants import DefaultValues
-
-import os
+from turtleapp.src.utils import clean_movie_filename, handle_service_errors, handle_tool_errors, logger
 
 
 class FileExtensions:
@@ -58,7 +57,7 @@ class LibraryManagerTool(BaseTool):
         return result
 
 
-library_manager = ToolAgent([LibraryManagerTool()])
+library_manager_tool = LibraryManagerTool()
 
 if __name__ == "__main__":
     movies = scan_smb_movie_library()

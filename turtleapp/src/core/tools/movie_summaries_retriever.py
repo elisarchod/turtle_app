@@ -1,11 +1,9 @@
-from langchain_core.tools import Tool
+from langchain_core.tools import BaseTool
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from langchain_core.tools import BaseTool
 
 from turtleapp.settings import settings
-from turtleapp.src.nodes import ToolAgent
-from turtleapp.src.utils import logger, handle_tool_errors
+from turtleapp.src.utils import handle_tool_errors, logger
 
 vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
     index_name=settings.pinecone.index_name,
@@ -26,7 +24,7 @@ class MovieRetrieverTool(BaseTool):
     description: str = "Search and retrieve movie information from the movie database using semantic search"
 
     @handle_tool_errors(default_return="Movie search failed")
-    def _run(self, query: str, max_results: int) -> str:
+    def _run(self, query: str, max_results: int = 5) -> str:
         retriever = vector_store.as_retriever(search_kwargs={"k": max_results})
         
         documents = retriever.invoke(query)
@@ -63,7 +61,7 @@ class MovieRetrieverTool(BaseTool):
         
         return result
 
-movie_retriever = ToolAgent([MovieRetrieverTool()])
+movie_retriever_tool = MovieRetrieverTool()
 
 
 if __name__ == "__main__":

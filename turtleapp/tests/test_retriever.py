@@ -1,6 +1,6 @@
 import pytest
 
-from turtleapp.src.core.tools.movie_summaries_retriever import MovieRetrieverTool, movie_retriever
+from turtleapp.src.core.tools.movie_summaries_retriever import MovieRetrieverTool, movie_retriever_tool
 from turtleapp.src.nodes import ToolAgent
 
 

@@ -1,11 +1,11 @@
-import requests
 import time
+from typing import Any, Dict, List
+
+import requests
 from langchain_core.tools import BaseTool
-from typing import List, Dict, Any
 
 from turtleapp.settings import settings
-from turtleapp.src.nodes import ToolAgent
-from turtleapp.src.utils import handle_tool_errors, handle_service_errors, clean_movie_filename
+from turtleapp.src.utils import clean_movie_filename, handle_service_errors, handle_tool_errors
 
 URL = f"{settings.qbittorrent.host}/api/v2"
 HEADERS = {'Referer': settings.qbittorrent.host}
@@ -27,7 +27,6 @@ def api_call(endpoint: str, data: dict = None) -> requests.Response:
 def get_torrents(filter_downloading: bool = False) -> List[Dict[str, Any]]:
     response = api_call('/torrents/info')
     torrents = response.json()
-    tort = torrents[3]
 
     if filter_downloading:
         torrents = [t for t in torrents if t.get('progress') != 1]
@@ -95,9 +94,9 @@ class TorrentSearchTool(BaseTool):
         
         return result
 
-torrent_agent = ToolAgent([TorrentDownloadsTool(),
-                           TorrentSearchTool()],
-                          name="movies_download_manager_agent")
+
+torrent_search_tool = TorrentSearchTool()
+torrent_download_tool = TorrentDownloadsTool()
 
 if __name__ == "__main__":
     downloads_tool = TorrentDownloadsTool()

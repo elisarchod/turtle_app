@@ -6,8 +6,8 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
 from turtleapp.src.workflows.graph import WorkflowGraph, agentic_tools
-from turtleapp.api.routes.endpoints import create_thread_id
-
+from turtleapp.src.utils.memory_utils import create_thread_id
+from langgraph.constants import END
 
 class TestWorkflowToolSelection:
     """Test that the graph selects the right tool for different requests."""
@@ -45,8 +45,7 @@ class TestWorkflowToolSelection:
     
     async def test_movie_query_routes_to_movie_retriever(self, mock_components):
         """Test that movie plot queries route to movie retriever."""
-        # Configure supervisor to route to movie_details_retriever first, then FINISH
-        from langgraph.constants import END
+
         mock_components['supervisor_instance'].side_effect = [
             Command(goto="movie_details_retriever"),
             Command(goto=END)
@@ -55,21 +54,18 @@ class TestWorkflowToolSelection:
         graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
-        # Test graph invocation
         result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="What's the plot of Terminator 2?")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
         
         assert result is not None
-        # Verify the supervisor was called
         mock_components['supervisor_instance'].assert_called()
 
 
     async def test_torrent_query_routes_to_torrent_manager(self, mock_components):
         """Test that torrent queries route to torrent manager."""
-        # Configure supervisor to route to torrent_agent first, then FINISH
-        from langgraph.constants import END
+
         mock_components['supervisor_instance'].side_effect = [
             Command(goto="torrent_agent"),
             Command(goto=END)
@@ -78,20 +74,18 @@ class TestWorkflowToolSelection:
         graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
         
-        # Test graph invocation
         result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="Search for Inception torrent")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
 
         assert result is not None
-        # Verify the supervisor was called
         mock_components['supervisor_instance'].assert_called()
     
     async def test_library_query_routes_to_library_manager(self, mock_components):
         """Test that library queries route to library manager."""
         # Configure supervisor to route to library_manager first, then FINISH
-        from langgraph.constants import END
+
         mock_components['supervisor_instance'].side_effect = [
             Command(goto="library_manager"),
             Command(goto=END)
@@ -99,8 +93,7 @@ class TestWorkflowToolSelection:
         
         graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
-        
-        # Test graph invocation
+
         result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="What movies are in my library?")]},
             {"configurable": {"thread_id": create_thread_id()}}
@@ -111,14 +104,12 @@ class TestWorkflowToolSelection:
     
     async def test_finish_command_ends_workflow(self, mock_components):
         """Test that FINISH command ends the workflow."""
-        # Configure supervisor to finish
         from langgraph.constants import END
         mock_components['supervisor_instance'].return_value = Command(goto=END)
         
         graph = WorkflowGraph(agentic_tools, name='test_graph')
         compiled_graph = graph.compile()
-        
-        # Test graph invocation
+
         result = await compiled_graph.ainvoke(
             {"messages": [HumanMessage(content="Thank you")]},
             {"configurable": {"thread_id": create_thread_id()}}
@@ -160,8 +151,8 @@ class TestWorkflowExecution:
             
             # Verify all expected agents are present
             assert "movie_details_retriever_agent" in graph.nodes
-            assert "torrent_manager_agent" in graph.nodes
             assert "library_manager_agent" in graph.nodes
+            assert "movies_download_manager" in graph.nodes
     
     def test_compiled_graph_properties(self):
         """Test compiled graph has expected properties."""
