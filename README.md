@@ -70,9 +70,12 @@ graph LR
 - **Technology**: LangGraph for multi-agent orchestration
 - **Components**:
   - State management using `MessagesState`
-  - Memory persistence with `MemorySaver`
+  - Memory persistence with `MemorySaver` (upgraded from InMemorySaver)
   - Agent routing and coordination
-- **Main Agent**: `movie_workflow_agent`
+  - **Encapsulated Invocation**: `invoke_with_thread()` method for consistent config management
+- **Main Instances**: 
+  - `movie_workflow_agent` (WorkflowGraph instance with helper methods)
+  - `movie_workflow_graph` (CompiledStateGraph for direct access)
 
 ### 🎯 Supervisor Agent
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
@@ -136,9 +139,10 @@ graph LR
 - Applied across all tool implementations
 
 **Constants** (`turtleapp/src/constants.py`):
-- Centralized configuration constants and enums
+- **Simplified Architecture**: Removed unnecessary `ConfigKeys` enum for cleaner code
+- Centralized configuration constants with `SUPERVISOR_NODE` and `DefaultValues`
 - Node names, file extensions, and default values
-- Pure enums for better type safety
+- Eliminated verbose enum wrappers in favor of direct string literals
 
 ## 💬 Usage Examples
 
@@ -257,6 +261,11 @@ sequenceDiagram
     - `wiki_movie_plots_cleaned.csv`: Processed movie plot data from CMU Movie Summary Corpus
     - Contains movie summaries, metadata, and plot descriptions for vector embedding
 - **🧪 Testing**: Comprehensive test suite for all core components
+- **🏗️ Enhanced Architecture**: 
+  - **Tool Organization**: Tools are now direct instances (`movie_retriever_tool`, `library_manager_tool`, etc.) wrapped by generic `ToolAgent` class
+  - **Agent Reliability**: `AgentExecutor` with `handle_parsing_errors=True` and `max_iterations=3`
+  - **Simplified Constants**: Removed unnecessary `ConfigKeys` enum in favor of direct string literals
+  - **Graph Encapsulation**: `invoke_with_thread()` method handles thread management and configuration
 
 ### 🚧 In Development
 
@@ -269,7 +278,10 @@ sequenceDiagram
 ### ✅ Recently Completed
 
 - **🔧 Code Quality Improvements**
-  - [x] **Constants and Enums**: Centralized configuration constants with proper enum types
+  - [x] **Constants Simplification**: Removed unnecessary `ConfigKeys` enum for cleaner, more direct code
+  - [x] **Graph Encapsulation**: Added `invoke_with_thread()` method for consistent invocation patterns
+  - [x] **Tool Architecture**: Refactored tools to be direct instances wrapped by generic `ToolAgent` class
+  - [x] **Enhanced Error Handling**: `AgentExecutor` with parsing error handling and iteration limits
   - [x] **LLM Factory Pattern**: Eliminated duplicate LLM initialization code
   - [x] **Standardized Error Handling**: Consistent error handling decorators across all tools
   - [x] **Naming Conventions**: Improved function and variable naming for clarity
@@ -288,11 +300,14 @@ sequenceDiagram
   - [x] **Error Handling Tests**: Verification of standardized error handling
   - [x] **Integration Tests**: End-to-end workflow testing with conversation memory
 
-- **🛠️ LLM-Optimized Tools**
-  - [x] **Combined Torrent Agent**: Single agent with multiple tools for intelligent routing
+- **🛠️ LLM-Optimized Tools & Architecture**
+  - [x] **Combined Torrent Agent**: Single agent with multiple tools (`torrent_download_tool`, `torrent_search_tool`) for intelligent routing
+  - [x] **Tool Parameter Flexibility**: `movie_retriever_tool` with optional `max_results` parameter (default: 5)
+  - [x] **Memory Management**: Upgraded from `InMemorySaver` to `MemorySaver` for better persistence
+  - [x] **Async Integration**: Proper async/await handling throughout the workflow execution
   - [x] **Removed Overengineered Parsing**: Let ReAct agents handle natural language routing
-  - [x] **Clean API Design**: Modern REST API without backward compatibility
-  - [x] **Constants Organization**: Moved constants to appropriate directory structure
+  - [x] **Clean API Design**: Simplified API integration using encapsulated graph methods
+  - [x] **Constants Organization**: Streamlined constants without unnecessary enum verbosity
   - [x] **Error Resilience**: Graceful handling of network failures and service unavailability
 
 ### 🗺️ Future Roadmap
@@ -313,48 +328,128 @@ sequenceDiagram
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.11+
-- Poetry
-- Docker (for containerized deployment)
-- qBittorrent (for torrent functionality)
-- SMB/CIFS network share (for library management)
+- **Python 3.11+**
+- **Poetry** (for dependency management)
+- **Docker & Docker Compose** (recommended for easy setup)
 
-### Installation & Running
+### ⚡ Option 1: Docker Compose (Recommended)
 
-#### Option 1: Local Development
+**This is the easiest way to get started!** Docker Compose will set up all the infrastructure services for you.
+
+#### Step 1: Clone and Setup
 ```bash
-# Clone the repository
+git clone <repository-url>
+cd turtle-app
+```
+
+#### Step 2: Configure API Keys
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your API keys (required for AI features)
+nano .env  # or use your preferred editor
+```
+
+**Required API Keys to add to `.env`:**
+- `CLAUDE_API`: Get from [Anthropic Console](https://console.anthropic.com/)
+- `OPENAI_API_KEY`: Get from [OpenAI Platform](https://platform.openai.com/api-keys)
+- `PINECONE_API_KEY`: Get from [Pinecone Console](https://app.pinecone.io/)
+- `LANGCHAIN_API_KEY`: Optional, get from [LangSmith](https://smith.langchain.com/) for tracing
+
+#### Step 3: Start Everything
+```bash
+cd build
+docker-compose up -d
+```
+
+**🎉 That's it!** Your services are now running:
+- **Turtle App API**: http://localhost:8000
+- **qBittorrent Web UI**: http://localhost:15080 (admin/adminadmin)
+- **Samba Share**: Available on network ports 139/445
+
+#### Step 4: Test the API
+```bash
+# Test with a simple movie question
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Tell me about Terminator 2"}'
+
+# Check health
+curl "http://localhost:8000/health"
+```
+
+#### Managing Services
+```bash
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Restart services
+docker-compose restart
+```
+
+### Option 2: Local Development
+
+If you want to develop or run without Docker:
+
+#### Step 1: Setup Environment
+```bash
+# Clone and navigate
 git clone <repository-url>
 cd turtle-app
 
 # Install dependencies
 poetry install
 
-# Set up environment variables
+# Setup environment
 cp .env.example .env
-# Edit .env with your API keys and configuration
+# Edit .env with your API keys
+```
 
-# Run the API server
+#### Step 2: Start External Services
+You'll need to run qBittorrent and Samba separately, or use Docker Compose just for infrastructure:
+```bash
+# Start only infrastructure services
+cd build
+docker-compose up -d qbittorrent nas
+```
+
+#### Step 3: Run the API
+```bash
+# Start the Turtle App API
 poetry run turtle-app-ep
 ```
 
-#### Option 2: Docker Deployment
+### 🔧 Configuration Details
 
-##### FastAPI Server (Recommended)
-```bash
-# Build and run FastAPI server
-docker build -f build/Dockerfile_api -t turtle-app-api .
-docker run -p 8000:8000 turtle-app-api
+#### Docker Compose (Default Setup)
+The `.env.example` file is pre-configured for Docker Compose with sensible defaults:
 
-# Or with environment file
-docker run -p 8000:8000 --env-file .env turtle-app-api
+```env
+# Infrastructure defaults (Docker overrides these automatically)
+QBITTORRENT_HOST=http://localhost:15080
+SAMBA_SERVER=localhost
+SAMBA_SHARE_PATH=daves
+
+# Docker volume paths
+HDD_PATH=./downloads
+STACK_PATH=./volumes
 ```
 
-##### LangGraph Cloud/Server
-```bash
-# Build and run LangGraph server
-docker build -f build/Dockerfile_langgraph -t turtle-app-langgraph .
-docker run -p 8000:8000 turtle-app-langgraph
+**Services Created:**
+- **qBittorrent**: `http://localhost:15080` (admin/adminadmin)
+- **Samba**: Network share `\\localhost\daves` (dave/password)
+- **Turtle App API**: `http://localhost:8000`
+
+#### External Deployment
+For external qBittorrent/Samba servers, see `.env.external` example:
+```env
+QBITTORRENT_HOST=http://192.168.1.205:15080
+SAMBA_SERVER=192.168.1.205
+SAMBA_SHARE_PATH=\\192.168.1.205\daves\elements_main\torrent\incomplete
 ```
 
 ### API Usage

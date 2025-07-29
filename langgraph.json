@@ -3,9 +3,7 @@
     "."
   ],
   "graphs": {
-    "home_recommender": "turtleapp/src/workflows/graph.py:movie_workflow_graph",
-    "torrent_manager": "turtleapp/src/core/tools/torrent_tools.py:torrent_agent",
-    "movie_summeries_retriever": "turtleapp/src/core/tools/movie_summaries_retriever.py:movie_retriever"
+    "home_recommender": "turtleapp/src/workflows/graph.py:movie_workflow_graph"
   },
   "env": ".env"
 }

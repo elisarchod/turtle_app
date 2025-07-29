@@ -1,0 +1,66 @@
+services:
+
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK_SET=022
+      - WEBUI_PORT=15080
+    volumes:
+      - ${STACK_PATH:-./volumes}/qbittorrent/config:/config
+      - ${HDD_PATH:-./downloads}:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 15080:15080
+      - 1080:1080
+    restart: unless-stopped
+
+  nas:
+    image: dperson/samba
+    container_name: samba
+    environment:
+      - TZ=${TZ:-UTC}
+    networks:
+      - default
+    ports:
+      - 1139:139
+      - 1445:445
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${HDD_PATH:-./downloads}:/downloads
+    command: >
+      -s "${SAMBA_SHARE_PATH:-daves};/downloads;yes;no;no"
+      -u "${SAMBA_USER:-dave};${SAMBA_PASSWORD:-password}"
+      -w "WORKGROUP"
+
+  turtle-app-api:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile_api
+    container_name: turtle-app-api
+    env_file:
+      - ../.env
+    environment:
+      # Override for internal Docker network communication
+      - QBITTORRENT_HOST=http://qbittorrent:15080
+      - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+    networks:
+      - default
+    depends_on:
+      - qbittorrent
+      - nas
+
+networks:
+  default:
+    driver: bridge
+    attachable: true
+    ipam:
+      driver: default
