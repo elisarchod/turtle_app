@@ -32,7 +32,7 @@ class ErrorResponse(BaseModel):
 
 
 @app.get("/health", response_model=HealthResponse)
-async def health_check():
+def health_check():
     return HealthResponse(
         status="healthy",
         time=datetime.now(),
@@ -43,14 +43,14 @@ async def health_check():
 @app.post("/chat",
           response_model=ChatResponse,
           responses={500: {"model": ErrorResponse}})
-async def chat(request: ChatRequest):
-    return await _process_chat_request(request.message, request.thread_id)
+def chat(request: ChatRequest):
+    return _process_chat_request(request.message, request.thread_id)
 
-async def _process_chat_request(message: str, thread_id: Optional[str] = None) -> ChatResponse:
+def _process_chat_request(message: str, thread_id: Optional[str] = None) -> ChatResponse:
     logger.info(f"Received request: {message}")
     
     try:
-        result, used_thread_id = await movie_workflow_agent.invoke_with_thread(message, thread_id)
+        result, used_thread_id = movie_workflow_agent.invoke(message, thread_id)
         
         logger.info(f"Workflow completed successfully for thread: {used_thread_id}")
         
