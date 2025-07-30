@@ -44,7 +44,7 @@ services:
       dockerfile: build/Dockerfile_api
     container_name: turtle-app-api
     env_file:
-      - ../.env
+      - ../.env.local
     environment:
       # Override for internal Docker network communication
       - QBITTORRENT_HOST=http://qbittorrent:15080
