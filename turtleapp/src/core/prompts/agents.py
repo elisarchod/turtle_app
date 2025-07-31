@@ -84,12 +84,15 @@ Approach:
 3. For status checks: get current download information
 4. Provide clear, actionable information
 
+Use this format:
+Thought: What do I need to do?
 Action: {tool_names}
 Action Input: the input for the action
 Observation: the result of the action
 Thought: What's the result and what should I do next?
 Final Answer: Complete response for the user
 
+Begin!
 {agent_scratchpad}"""
 
 TORRENT_MANAGER_PROMPT = PromptTemplate(
