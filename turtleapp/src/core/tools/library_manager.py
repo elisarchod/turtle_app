@@ -5,7 +5,7 @@ import smbclient as smb_client
 from langchain_core.tools import BaseTool
 
 from turtleapp.settings import settings
-from turtleapp.src.constants import DefaultValues
+from turtleapp.src.core.constants import DefaultValues
 from turtleapp.src.utils import clean_movie_filename, handle_service_errors, handle_tool_errors, logger
 
 
@@ -33,10 +33,28 @@ def scan_smb_movie_library() -> Dict[str, str]:
 
 class LibraryManagerTool(BaseTool):
     name: str = "library_manager"
-    description: str = "Scans and catalogs the local movie library from network shares"
+    description: str = """Scan and catalog the local movie library from SMB network shares.
+    
+    Use when users ask about:
+    - What movies they already own
+    - Library size and statistics
+    - File format distribution
+    - Movie collection organization
+    
+    Input: No parameters needed (scans entire configured library)
+    Returns: Complete library catalog with statistics
+    
+    Provides information about:
+    - Total number of movies found
+    - File format breakdown (MKV, MP4, AVI, etc.)
+    - Sample movie titles from collection
+    - Library organization insights
+    
+    Note: Scans configured SMB shares for supported video formats (.mkv, .mp4, .avi, .mov, .wmv)
+    """
 
     @handle_tool_errors(default_return="Library scan failed")
-    def _run(self) -> str:
+    def _run(self, tool_input: str = "") -> str:
         movies_paths = scan_smb_movie_library()
         total_movies = len(movies_paths)
         file_extensions = {}

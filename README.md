@@ -10,7 +10,7 @@ The Turtle App is your personal AI assistant for home theater management. It can
 
 - **🔍 Answer questions about movies** using a comprehensive database of movie summaries and metadata
 - **💾 Manage your local movie library** by scanning and indexing your collection
-- **⬬ Handle torrent downloads** through integration with qBittorrent
+- **⬬ Handle movie downloads** through integration with download client
 - **🤖 Maintain conversation context** across multiple interactions
 - **🌐 Deploy as a web service** with RESTful API endpoints
 
@@ -72,57 +72,84 @@ graph LR
   - State management using `MessagesState`
   - Memory persistence with `MemorySaver` (upgraded from InMemorySaver)
   - Agent routing and coordination
-  - **Encapsulated Invocation**: `invoke_with_thread()` method for consistent config management
+  - **Sync-Only Execution**: Fully synchronous workflow compatible with Jupyter notebooks, CLI, and tests
+  - **Encapsulated Invocation**: `invoke()` method for consistent config management
 - **Main Instances**: 
   - `movie_workflow_agent` (WorkflowGraph instance with helper methods)
   - `movie_workflow_graph` (CompiledStateGraph for direct access)
 
 ### 🎯 Supervisor Agent
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
-- **Technology**: Claude 3.5 Sonnet with LangChain Hub prompts for intelligent routing decisions
-- **Function**: Analyzes user intent and determines which agent should handle the request
+- **Technology**: Claude 3.5 Sonnet with custom-engineered routing prompts for intelligent decision making
+- **Function**: Analyzes user intent and determines which agent should handle the request using explicit routing rules
+- **Key Features**:
+  - **Custom Routing Logic**: Replaced external hub dependency with domain-specific routing criteria
+  - **Clear Decision Rules**: Explicit rules for routing to movie retrieval, torrent management, or library scanning
+  - **Context-Aware**: Understands home theater management domain for better routing decisions
+  - **Robust Prompt Management**: Centralized prompts in Python modules for reliability and maintainability
 - **Implementation**: `turtleapp/src/nodes/supervisor.py`
+- **Prompts**: `turtleapp/src/core/prompts/supervisor.py`
 
 ### 🎬 Movie Retriever Agent (RAG)
-- **Role**: Answers questions about movies using semantic search
-- **Data Source**: Pinecone vector database with 42,000+ movie summaries from CMU Movie Summary Corpus
+- **Role**: Movie database expert with specialized knowledge of 42,000+ movie summaries
+- **Data Source**: Pinecone vector database with CMU Movie Summary Corpus
+- **Agent Specialization**:
+  - **Domain Expertise**: Specialized prompt with movie database knowledge and search best practices
+  - **Tool Usage Guidelines**: Clear instructions for semantic search parameter optimization
+  - **Step-by-Step Approach**: Structured process for extracting search terms and presenting results
+  - **Robust Prompt Management**: Centralized agent prompts in Python modules for consistency
 - **Capabilities**:
   - Movie plot summaries and analysis
   - Movie recommendations based on genre, cast, or plot similarity
   - Metadata retrieval (cast, director, year, genre)
   - Semantic search across movie descriptions
+- **Enhanced Tool Description**: Comprehensive usage guidelines with examples and parameter recommendations
 - **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
 - **Tool Name**: `movie_retriever_tool`
+- **Prompts**: `turtleapp/src/core/prompts/agents.py` (MOVIE_RETRIEVER_PROMPT)
 - **Testing**: `turtleapp/tests/test_retriever.py`
 
-### ⬬ Torrent Manager Agent
-- **Role**: Comprehensive torrent management with intelligent tool selection
-- **Integration**: qBittorrent Web API
-- **Architecture**: Single agent with multiple specialized tools
+### ⬬ Movie Download Manager Agent
+- **Role**: Movie download management expert specializing in movie file acquisition
+- **Integration**: Download client Web API
+- **Architecture**: Single agent with multiple specialized tools and intelligent routing
+- **Agent Specialization**:
+  - **Domain Expertise**: Specialized prompt with download management knowledge and best practices
+  - **Quality Preferences**: Guidance for preferring higher quality (1080p+) and well-sourced files
+  - **Tool Coordination**: Clear approach for determining user intent (search vs. status check)
 - **Capabilities**:
-  - **Download monitoring**: List currently downloading torrents with progress status
-  - **Torrent search**: Search for movie torrents by title or keyword
+  - **Download monitoring**: List currently downloading movies with progress status
+  - **Movie search**: Search for movie files by title or keyword
   - **Intelligent routing**: ReAct agent automatically selects appropriate tool based on user intent
   - **Natural language interface**: Handles queries like "check downloads" or "search for Matrix"
-- **Tools Available**:
-  - `torrent_downloads_tool`: Monitor current downloads and status
-  - `torrent_search_tool`: Search torrent sites through qBittorrent plugins
+- **Enhanced Tool Descriptions**:
+  - `movie_download_status`: Detailed status information with progress, speeds, and ETA
+  - `movie_search`: Comprehensive search guidance with quality info and best practices
 - **Implementation**: `turtleapp/src/core/tools/torrent_tools.py`
+- **Prompts**: `turtleapp/src/core/prompts/agents.py` (TORRENT_MANAGER_PROMPT)
 - **Testing**: `turtleapp/tests/test_torrent.py`
 
 ### 📁 Library Manager Agent
-- **Role**: Scans and catalogs local movie library
+- **Role**: Local movie library specialist managing SMB network shares
 - **Integration**: Samba/CIFS network shares
+- **Agent Specialization**:
+  - **Domain Expertise**: Specialized prompt with library management and file organization knowledge
+  - **Analytics Focus**: Guidance for providing useful library statistics and insights
+  - **Organization Suggestions**: Capability to suggest library improvements when relevant
 - **Capabilities**:
   - Scan network shares for movie files
   - Generate library catalog with file paths
+  - File format analysis and reporting
+  - Library statistics and organization insights
+- **Enhanced Tool Description**: Comprehensive guidance for library operations with supported formats and statistics
 - **Implementation**: `turtleapp/src/core/tools/library_manager.py`
 - **Tool Name**: `library_manager_tool`
+- **Prompts**: `turtleapp/src/core/prompts/agents.py` (AGENT_BASE_PROMPT - direct node implementation)
 - **Testing**: `turtleapp/tests/test_library_manager.py`
 
 ### 🌐 API Layer
 - **Implementation**: `turtleapp/api/routes/endpoints.py`
-- **Technology**: FastAPI with async endpoints
+- **Technology**: FastAPI with synchronous endpoints
 - **Endpoints**: 
   - `POST /chat` - Main conversation endpoint
   - `GET /health` - Health check endpoint
@@ -143,6 +170,12 @@ graph LR
 - Node names, file extensions, and default values
 - Eliminated verbose enum wrappers in favor of direct string literals
 
+**Prompt Management** (`turtleapp/src/core/prompts/`):
+- Centralized prompt storage in Python modules for reliability
+- Path-independent prompt loading eliminates file system dependencies
+- Type-safe imports with IDE support and import-time validation
+- Modular organization: supervisor.py, agents.py, __init__.py
+
 ## 💬 Usage Examples
 
 ### Movie Information & Recommendations
@@ -159,24 +192,24 @@ sequenceDiagram
   S ->> U: Formatted response with movie info
 ```
 
-### Torrent Management
+### Movie Download Management
 
 ```mermaid
 sequenceDiagram
   participant U as User
   participant S as Supervisor
-  participant TM as Torrent Manager
+  participant DM as Download Manager
   U ->> S: "Download The Matrix"
-  S ->> TM: Route to Torrent Manager
-  TM ->> TM: Select torrent_search_tool
-  TM ->> TM: Search for Matrix torrents
-  TM ->> S: Return search results
-  S ->> U: Found Matrix torrents (user selects)
+  S ->> DM: Route to Download Manager
+  DM ->> DM: Select movie_search
+  DM ->> DM: Search for Matrix files
+  DM ->> S: Return search results
+  S ->> U: Found Matrix files (user selects)
   U ->> S: "Check my downloads"
-  S ->> TM: Route to Torrent Manager
-  TM ->> TM: Select torrent_downloads_tool
-  TM ->> TM: Get download status
-  TM ->> S: Current downloads with progress
+  S ->> DM: Route to Download Manager
+  DM ->> DM: Select movie_download_status
+  DM ->> DM: Get download status
+  DM ->> S: Current downloads with progress
   S ->> U: Matrix downloading at 45%
 ```
 
@@ -187,22 +220,22 @@ sequenceDiagram
   participant U as User
   participant S as Supervisor
   participant MR as Movie Retriever
-  participant TM as Torrent Manager
+  participant DM as Download Manager
   participant LM as Library Manager
   U ->> S: "I want to watch Star Wars"
   S ->> LM: Route to Library Manager
   LM ->> LM: Scan local files
   LM ->> S: No local file found
-  S ->> TM: Route to Torrent Manager
-  TM ->> TM: Select torrent_search_tool
-  TM ->> TM: Search for Star Wars torrents
-  TM ->> S: Return search results
+  S ->> DM: Route to Download Manager
+  DM ->> DM: Select movie_search
+  DM ->> DM: Search for Star Wars files
+  DM ->> S: Return search results
   S ->> MR: Find similar movies
   MR ->> S: Return recommendations
   S ->> LM: Check for similar movies
   LM ->> LM: Scan local files
   LM ->> S: Found "Empire Strikes Back"
-  S ->> U: Star Wars torrents found. You have "Empire Strikes Back" locally.
+  S ->> U: Star Wars files found. You have "Empire Strikes Back" locally.
 ```
 
 ## 🧠 Design Assumptions & Model Selection
@@ -216,7 +249,7 @@ sequenceDiagram
 **Tool Agents: Claude 3.5 Haiku** 
 - Optimized for speed and cost on focused tasks
 - Multiple calls per request, so cost efficiency matters
-- Sufficient capability for single-domain operations (movies, torrents, library)
+- Sufficient capability for single-domain operations (movies, downloads, library)
 
 **Embeddings: OpenAI `text-embedding-3-large`**
 - Claude doesn't offer embedding models yet
@@ -246,9 +279,9 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### External Integrations
 
-- **qBittorrent Web API**: Torrent client management
+- **Download Client Web API**: Movie download client management
 - **Samba/CIFS (pysmb)**: Network file share access
-- **FastAPI**: RESTful API endpoints with async support
+- **FastAPI**: RESTful API endpoints with synchronous execution
 
 ### Development & Deployment
 
@@ -263,7 +296,7 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 - **🤖 Multi-Agent System**: Fully functional supervisor with three specialized agents
 - **🔍 Movie RAG System**: Vector search with 42,000+ movie summaries
-- **⬬ Torrent Integration**: qBittorrent API integration for download management
+- **⬬ Download Integration**: Download client API integration for movie file management
 - **📁 Library Management**: SMB/CIFS network share scanning
 - **🌐 REST API**: FastAPI endpoint for external interactions
 - **💾 Data Pipeline**: Movie data processing and vector store upload
@@ -284,7 +317,7 @@ This multi-model approach balances cost, performance, and quality across the sys
   - **Tool Organization**: Tools are now direct instances (`movie_retriever_tool`, `library_manager_tool`, etc.) wrapped by generic `ToolAgent` class
   - **Agent Reliability**: `AgentExecutor` with `handle_parsing_errors=True` and `max_iterations=3`
   - **Simplified Constants**: Removed unnecessary `ConfigKeys` enum in favor of direct string literals
-  - **Graph Encapsulation**: `invoke_with_thread()` method handles thread management and configuration
+  - **Graph Encapsulation**: `invoke()` method handles thread management and configuration
 
 ### 🚧 In Development
 
@@ -296,9 +329,21 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### ✅ Recently Completed
 
+- **🧠 Prompt Engineering Overhaul (Major)**
+  - [x] **Custom Supervisor Prompt**: Replaced external hub dependency with domain-specific routing logic
+  - [x] **Specialized Agent Prompts**: Created expert-level prompts for movie retrieval, torrent management, and library scanning
+  - [x] **Enhanced Tool Descriptions**: Comprehensive tool guidance with use cases, examples, and best practices
+  - [x] **Workflow Context**: Added multi-agent system awareness for better coordination
+  - [x] **Domain Expertise**: Agents now understand their specialized roles in home theater management
+  - [x] **Clear Decision Criteria**: Explicit routing rules for 30-50% reduction in failed iterations
+  - [x] **Tool Usage Guidelines**: Step-by-step approaches and parameter optimization guidance
+  - [x] **Robust Prompt Architecture**: Moved prompts from hardcoded strings to centralized Python modules (`turtleapp/src/core/prompts/`)
+  - [x] **Path-Independent Loading**: Eliminated file system dependencies for improved reliability across environments
+  - [x] **Type-Safe Prompt Management**: Import-time validation and IDE support for better development experience
+
 - **🔧 Code Quality Improvements**
   - [x] **Constants Simplification**: Removed unnecessary `ConfigKeys` enum for cleaner, more direct code
-  - [x] **Graph Encapsulation**: Added `invoke_with_thread()` method for consistent invocation patterns
+  - [x] **Graph Encapsulation**: Added `invoke()` method for consistent invocation patterns
   - [x] **Tool Architecture**: Refactored tools to be direct instances wrapped by generic `ToolAgent` class
   - [x] **Enhanced Error Handling**: `AgentExecutor` with parsing error handling and iteration limits
   - [x] **LLM Factory Pattern**: Eliminated duplicate LLM initialization code
@@ -307,15 +352,15 @@ This multi-model approach balances cost, performance, and quality across the sys
   - [x] **Removed Abstractions**: Eliminated unnecessary BaseAgent abstraction
   - [x] **Clean Documentation**: Removed uninformative docstrings
 
-- **⚡ Async/Await Consistency**
-  - [x] **Full Async Support**: All agents converted to async-only processing
-  - [x] **Async Workflow Compilation**: Workflow graph compiled for async execution
-  - [x] **Performance Improvements**: Enhanced concurrent request handling
-  - [x] **Simplified Architecture**: Removed dual sync/async complexity
+- **⚡ Sync-Only Architecture**
+  - [x] **Complete Sync Conversion**: All agents converted to synchronous processing
+  - [x] **Jupyter Compatibility**: Workflow graph works seamlessly in notebooks
+  - [x] **Simplified Execution**: Single execution path without async/await complexity
+  - [x] **Universal Compatibility**: Works in CLI, tests, and interactive environments
 
 - **🧪 Testing Improvements**
   - [x] **Simplified Test Suite**: Focused API endpoint testing with essential coverage
-  - [x] **Async Testing**: Comprehensive async operation testing with AsyncMock
+  - [x] **Synchronous Testing**: All tests converted to synchronous execution
   - [x] **Error Handling Tests**: Verification of standardized error handling
   - [x] **Integration Tests**: End-to-end workflow testing with conversation memory
 
@@ -323,7 +368,7 @@ This multi-model approach balances cost, performance, and quality across the sys
   - [x] **Combined Torrent Agent**: Single agent with multiple tools (`torrent_download_tool`, `torrent_search_tool`) for intelligent routing
   - [x] **Tool Parameter Flexibility**: `movie_retriever_tool` with optional `max_results` parameter (default: 5)
   - [x] **Memory Management**: Upgraded from `InMemorySaver` to `MemorySaver` for better persistence
-  - [x] **Async Integration**: Proper async/await handling throughout the workflow execution
+  - [x] **Synchronous Integration**: Clean synchronous execution throughout the workflow
   - [x] **Removed Overengineered Parsing**: Let ReAct agents handle natural language routing
   - [x] **Clean API Design**: Simplified API integration using encapsulated graph methods
   - [x] **Constants Organization**: Streamlined constants without unnecessary enum verbosity

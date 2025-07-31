@@ -2,7 +2,7 @@
 
 from langchain_anthropic import ChatAnthropic
 from turtleapp.settings import settings
-from turtleapp.src.constants import DefaultValues
+from turtleapp.src.core.constants import DefaultValues
 
 
 def create_llm(model: str, temperature: float = DefaultValues.DEFAULT_TEMPERATURE) -> ChatAnthropic:

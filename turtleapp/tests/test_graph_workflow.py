@@ -1,13 +1,15 @@
 """Test graph workflow with cost-effective mocking."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from langchain_core.messages import HumanMessage
+from langgraph.constants import END
 from langgraph.types import Command
 
-from turtleapp.src.workflows.graph import WorkflowGraph, agentic_tools
 from turtleapp.src.utils.memory_utils import create_thread_id
-from langgraph.constants import END
+from turtleapp.src.workflows.graph import create_movie_workflow
+
 
 class TestWorkflowToolSelection:
     """Test that the graph selects the right tool for different requests."""
@@ -43,7 +45,7 @@ class TestWorkflowToolSelection:
                 'agent_process': mock_agent_process
             }
     
-    async def test_movie_query_routes_to_movie_retriever(self, mock_components):
+    def test_movie_query_routes_to_movie_retriever(self, mock_components):
         """Test that movie plot queries route to movie retriever."""
 
         mock_components['supervisor_instance'].side_effect = [
@@ -51,10 +53,9 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = WorkflowGraph(agentic_tools, name='test_graph')
-        compiled_graph = graph.compile()
+        graph = create_movie_workflow()
         
-        result = await compiled_graph.ainvoke(
+        result = graph.compiled_graph.invoke(
             {"messages": [HumanMessage(content="What's the plot of Terminator 2?")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
@@ -63,7 +64,7 @@ class TestWorkflowToolSelection:
         mock_components['supervisor_instance'].assert_called()
 
 
-    async def test_torrent_query_routes_to_torrent_manager(self, mock_components):
+    def test_torrent_query_routes_to_torrent_manager(self, mock_components):
         """Test that torrent queries route to torrent manager."""
 
         mock_components['supervisor_instance'].side_effect = [
@@ -71,10 +72,9 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = WorkflowGraph(agentic_tools, name='test_graph')
-        compiled_graph = graph.compile()
+        graph = create_movie_workflow()
         
-        result = await compiled_graph.ainvoke(
+        result = graph.compiled_graph.invoke(
             {"messages": [HumanMessage(content="Search for Inception torrent")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
@@ -82,35 +82,37 @@ class TestWorkflowToolSelection:
         assert result is not None
         mock_components['supervisor_instance'].assert_called()
     
-    async def test_library_query_routes_to_library_manager(self, mock_components):
-        """Test that library queries route to library manager."""
-        # Configure supervisor to route to library_manager first, then FINISH
+    def test_library_query_routes_to_library_scan(self, mock_components):
+        """Test that library queries route to library scan node."""
+        # Configure supervisor to route to library_scan first, then FINISH
 
         mock_components['supervisor_instance'].side_effect = [
-            Command(goto="library_manager"),
+            Command(goto="library_manager_agent"),
             Command(goto=END)
         ]
         
-        graph = WorkflowGraph(agentic_tools, name='test_graph')
-        compiled_graph = graph.compile()
+        with patch('turtleapp.src.core.tools.library_manager.library_manager_tool._run') as mock_library_tool:
+            mock_library_tool.return_value = "Library scan completed. Found 5 movies."
+            
+            graph = create_movie_workflow()
 
-        result = await compiled_graph.ainvoke(
-            {"messages": [HumanMessage(content="What movies are in my library?")]},
-            {"configurable": {"thread_id": create_thread_id()}}
-        )
-        
-        assert result is not None
-        mock_components['supervisor_instance'].assert_called()
+            result = graph.compiled_graph.invoke(
+                {"messages": [HumanMessage(content="What movies are in my library?")]},
+                {"configurable": {"thread_id": create_thread_id()}}
+            )
+            
+            assert result is not None
+            mock_components['supervisor_instance'].assert_called()
+            mock_library_tool.assert_called_once()
     
-    async def test_finish_command_ends_workflow(self, mock_components):
+    def test_finish_command_ends_workflow(self, mock_components):
         """Test that FINISH command ends the workflow."""
         from langgraph.constants import END
         mock_components['supervisor_instance'].return_value = Command(goto=END)
         
-        graph = WorkflowGraph(agentic_tools, name='test_graph')
-        compiled_graph = graph.compile()
+        graph = create_movie_workflow()
 
-        result = await compiled_graph.ainvoke(
+        result = graph.compiled_graph.invoke(
             {"messages": [HumanMessage(content="Thank you")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
@@ -119,7 +121,7 @@ class TestWorkflowToolSelection:
         mock_components['supervisor_instance'].assert_called()
     
     @pytest.mark.slow
-    async def test_supervisor_routing_logic_with_hub_prompt(self, mock_components):
+    def test_supervisor_routing_logic_with_hub_prompt(self, mock_components):
         """Test that supervisor uses hub prompt for routing decisions."""
         # Configure supervisor response
         from langgraph.constants import END
@@ -128,10 +130,9 @@ class TestWorkflowToolSelection:
             Command(goto=END)
         ]
         
-        graph = WorkflowGraph(agentic_tools, name='test_graph')
-        compiled_graph = graph.compile()
+        graph = create_movie_workflow()
         
-        result = await compiled_graph.ainvoke(
+        result = graph.compiled_graph.invoke(
             {"messages": [HumanMessage(content="Tell me about a movie")]},
             {"configurable": {"thread_id": create_thread_id()}}
         )
@@ -147,17 +148,15 @@ class TestWorkflowExecution:
         """Test that graph initializes with all required agents."""
         with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
              patch('turtleapp.src.core.llm_factory.create_agent_llm'):
-            graph = WorkflowGraph(agentic_tools, name='test_graph')
+            graph = create_movie_workflow()
             
-            # Verify all expected agents are present
+            # Verify all expected agents are present (library_manager is now a direct node)
             assert "movie_details_retriever_agent" in graph.nodes
-            assert "library_manager_agent" in graph.nodes
             assert "movies_download_manager" in graph.nodes
     
     def test_compiled_graph_properties(self):
         """Test compiled graph has expected properties."""
         with patch('turtleapp.src.core.llm_factory.create_supervisor_llm'), \
              patch('turtleapp.src.core.llm_factory.create_agent_llm'):
-            graph = WorkflowGraph(agentic_tools, name='test_graph')
-            compiled_graph = graph.compile()
-            assert hasattr(compiled_graph, 'checkpointer')
+            graph = create_movie_workflow()
+            assert hasattr(graph.compiled_graph, 'checkpointer')

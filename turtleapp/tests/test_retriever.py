@@ -1,7 +1,7 @@
 import pytest
 
 from turtleapp.src.core.tools.movie_summaries_retriever import MovieRetrieverTool, movie_retriever_tool
-from turtleapp.src.nodes import ToolAgent
+from turtleapp.src.core.nodes import ToolAgent
 
 
 @pytest.fixture
@@ -13,7 +13,8 @@ def retriever_agent():
 @pytest.mark.asyncio
 async def test_retriever_agent_response(retriever_agent):
     """Test that the retriever agent returns a valid response."""
-    test_query = {"messages": "recommend 3 comedy movies"}
+    from langchain_core.messages import HumanMessage
+    test_query = {"messages": [HumanMessage(content="recommend 3 comedy movies")]}
     response = await retriever_agent.process(test_query)
     
     assert response is not None

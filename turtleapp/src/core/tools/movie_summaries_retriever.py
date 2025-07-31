@@ -21,7 +21,24 @@ def parse_document_content(content: str) -> dict[str, str]:
 
 class MovieRetrieverTool(BaseTool):
     name: str = "movie_details_retriever"
-    description: str = "Search and retrieve movie information from the movie database using semantic search"
+    description: str = """Search the movie database (42,000+ movies) using semantic search.
+    
+    Use this tool when users ask about:
+    - Movie plots, summaries, or storylines
+    - Cast members, directors, or crew
+    - Movie recommendations or similar films
+    - Genre-based queries or movie details
+    - Release years or production information
+    
+    Input: Search query (movie title, genre, plot keywords, cast names)
+    Parameters: max_results (default 5, use 3-5 for specific movies, 5-10 for broad searches)
+    
+    Example queries:
+    - "romantic comedies from the 90s"
+    - "Tom Hanks movies"
+    - "sci-fi thriller space"
+    - "Inception plot summary"
+    """
 
     @handle_tool_errors(default_return="Movie search failed")
     def _run(self, query: str, max_results: int = 5) -> str:

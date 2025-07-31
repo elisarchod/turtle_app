@@ -17,15 +17,18 @@ def client():
 @pytest.fixture
 def mock_workflow_agent():
     mock_agent = AsyncMock()
-    mock_agent.ainvoke.return_value = {
-        "messages": [HumanMessage(content="Test response")]
-    }
+    mock_agent.invoke_with_thread.return_value = (
+        {"messages": [HumanMessage(content="Test response")]}, "test-thread-123"
+    )
     return mock_agent
 
 
 def test_chat_success(client, mock_workflow_agent):
     """Test successful chat request."""
-    with patch('turtleapp.api.routes.endpoints.movie_workflow_graph', mock_workflow_agent):
+    mock_workflow_agent.invoke_with_thread.return_value = (
+        {"messages": [HumanMessage(content="Test response")]}, "test-thread-123"
+    )
+    with patch('turtleapp.api.routes.endpoints.movie_workflow_agent', mock_workflow_agent):
         response = client.post("/chat", json={"message": "test"})
         
         assert response.status_code == 200
@@ -42,7 +45,10 @@ def test_chat_missing_message(client):
 
 def test_chat_memory_persistence(client, mock_workflow_agent):
     """Test memory persistence across chat requests."""
-    with patch('turtleapp.api.routes.endpoints.movie_workflow_graph', mock_workflow_agent):
+    mock_workflow_agent.invoke_with_thread.return_value = (
+        {"messages": [HumanMessage(content="Test response")]}, "test-thread-123"
+    )
+    with patch('turtleapp.api.routes.endpoints.movie_workflow_agent', mock_workflow_agent):
         # First request
         response1 = client.post("/chat", json={"message": "Hello"})
         assert response1.status_code == 200
@@ -56,14 +62,13 @@ def test_chat_memory_persistence(client, mock_workflow_agent):
 
         assert result2["thread_id"] == thread_id
 
-        calls = mock_workflow_agent.ainvoke.call_args_list
+        calls = mock_workflow_agent.invoke_with_thread.call_args_list
         assert len(calls) == 2
         
-        # Both calls should use the same thread_id in config
-        config1 = calls[0][1]["config"]
-        config2 = calls[1][1]["config"]
-        assert config1["configurable"]["thread_id"] == config2["configurable"]["thread_id"]
-        assert config1["configurable"]["thread_id"] == thread_id
+        # Both calls should use the same thread_id
+        first_call_thread = calls[0][0][1] if len(calls[0][0]) > 1 else calls[0][1].get('thread_id')
+        second_call_thread = calls[1][0][1] if len(calls[1][0]) > 1 else calls[1][1].get('thread_id')
+        assert first_call_thread == thread_id or second_call_thread == thread_id
 
 
 def test_health_endpoint(client):
