@@ -386,17 +386,9 @@ STACK_PATH=./volumes
 ```
 
 **Services Created:**
-- **qBittorrent**: `http://localhost:15080` (admin/adminadmin)
-- **Samba**: Network share `\\localhost\daves` (dave/password)
+- **qBittorrent**: `http://localhost:15080`
+- **Samba**: Network share `\\localhost\daves`
 - **Turtle App API**: `http://localhost:8000`
-
-#### External Deployment
-For external qBittorrent/Samba servers, see `.env.external` example:
-```env
-QBITTORRENT_HOST=http://192.168.1.205:15080
-SAMBA_SERVER=192.168.1.205
-SAMBA_SHARE_PATH=\\192.168.1.205\daves\elements_main\torrent\incomplete
-```
 
 ### API Usage
 ```bash
