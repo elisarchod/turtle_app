@@ -42,7 +42,7 @@ def get_torrents(only_downloading: bool = False) -> List[Dict[str, Any]]:
 
 @handle_service_errors(service_name="TorrentAPI", default_return=[])
 def search_torrents(search_query: str) -> List[Dict[str, Any]]:
-    response = api_call('/search/start', {'pattern': search_query, 'plugins': 'all', 'category': 'all'})
+    response = api_call('/search/start', {'pattern': search_query, 'plugins': 'all', 'category': 'movies'})
     response.raise_for_status()
     search_id = response.json()['id']
 
@@ -137,3 +137,13 @@ if __name__ == "__main__":
     search_tool = TorrentSearchTool()
     print("Downloads:", downloads_tool._run(""))
     print("Search:", search_tool._run("terminator"))
+
+    search_query = 'terminator'
+    endpoint = '/search/status'
+    call_data = settings.qbittorrent.credentials.copy()
+    call_data.update()
+
+    search_id = requests.post(f"{URL}/search/start", headers=HEADERS, data={**call_data, **{'pattern': search_query, 'plugins': 'all', 'category': 'movies'}}, timeout=API_TIMEOUT).json()
+    requests.post(f"{URL}/search/stop", headers=HEADERS, data={**call_data, **search_id}, timeout=API_TIMEOUT).json()
+    requests.get(f"{URL}/search/status", headers=HEADERS, data=call_data, timeout=API_TIMEOUT).json()
+
