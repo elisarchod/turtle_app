@@ -13,10 +13,8 @@ vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
 def parse_document_content(content: str) -> dict[str, str]:
     return {
         key.strip(): value.strip()
-        for field in content.strip().split(' | ')
-        if ':' in field
-        for key, value in [field.split(':', 1)]
-        if key.strip() and value.strip()
+        for field in content.strip().split(' | ') if ':' in field
+        for key, value in [field.split(':', 1)] if key.strip() and value.strip()
     }
 
 class MovieRetrieverTool(BaseTool):
@@ -62,7 +60,7 @@ class MovieRetrieverTool(BaseTool):
             plot = parsed_fields.get('plot', '')
             
             year_str = f" ({year})" if year else ""
-            result += f"{i}. {title}{year_str}\n"
+            result += f"{i}. {title} {year_str}\n"
             
             if director:
                 result += f"   Director: {director}\n"
