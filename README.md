@@ -137,7 +137,7 @@ sequenceDiagram
 **Tool Agents: Claude 3.5 Haiku** 
 - Optimized for speed and cost on focused tasks
 - Multiple calls per request, so cost efficiency matters
-- Sufficient capability for single-domain operations (movies, downloads, library)
+- Sufficient capability for single-domain operations (movies, downloads)
 
 **Embeddings: OpenAI `text-embedding-3-large`**
 - Claude doesn't offer embedding models yet
@@ -201,7 +201,7 @@ This multi-model approach balances cost, performance, and quality across the sys
 ### External Integrations
 
 - **Download Client Web API**: Movie download client management
-- **Samba/CIFS (pysmb)**: Network file share access
+- **Samba/CIFS (smbclient)**: Network file share access
 - **FastAPI**: RESTful API endpoints with synchronous execution
 
 ### Development & Deployment
@@ -215,7 +215,7 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### ✅ Implemented Features
 
-- **🤖 Multi-Agent System**: Fully functional supervisor with three specialized agents
+- **🤖 Multi-Agent System**: Fully functional supervisor with three specialized agents (two ReAct agents + one direct tool agent)
 - **🔍 Movie RAG System**: Vector search with 42,000+ movie summaries
 - **⬬ Download Integration**: Download client API integration for movie file management
 - **📁 Library Management**: SMB/CIFS network share scanning
@@ -374,29 +374,11 @@ poetry run turtle-app-ep
 #### Docker Compose (Default Setup)
 The `.env.example` file is pre-configured for Docker Compose with sensible defaults:
 
-```env
-# Infrastructure defaults (Docker overrides these automatically)
-QBITTORRENT_HOST=http://localhost:15080
-SAMBA_SERVER=localhost
-SAMBA_SHARE_PATH=daves
-
-# Docker volume paths
-HDD_PATH=./downloads
-STACK_PATH=./volumes
-```
-
 **Services Created:**
 - **qBittorrent**: `http://localhost:15080` (admin/adminadmin)
 - **Samba**: Network share `\\localhost\daves` (dave/password)
 - **Turtle App API**: `http://localhost:8000`
 
-#### External Deployment
-For external qBittorrent/Samba servers, see `.env.external` example:
-```env
-QBITTORRENT_HOST=http://192.168.1.205:15080
-SAMBA_SERVER=192.168.1.205
-SAMBA_SHARE_PATH=\\192.168.1.205\daves\elements_main\torrent\incomplete
-```
 
 ### API Usage
 ```bash
@@ -418,19 +400,3 @@ curl "http://localhost:8000/health"
 ```bash
 # Run all tests
 poetry run pytest
-
-# Run tests with coverage
-poetry run pytest --cov=turtleapp
-
-# Run tests in parallel
-poetry run pytest -n auto
-
-# Skip slow tests
-poetry run pytest -m "not slow"
-
-# Run specific test files
-poetry run pytest turtleapp/tests/test_api_endpoints.py
-poetry run pytest turtleapp/tests/test_torrent.py
-poetry run pytest turtleapp/tests/test_library_manager.py
-poetry run pytest turtleapp/tests/test_retriever.py
-```
