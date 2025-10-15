@@ -10,6 +10,7 @@ This plan modernizes the Turtle App migration to leverage **LangGraph's native M
 - ✅ **Simpler architecture** - Remove ~300 lines of unnecessary abstraction code
 - ✅ **Better performance** - Persistent MCP connections managed by LangGraph
 - ✅ **Less maintenance** - Leverage battle-tested LangGraph MCP client
+- ✅ **LLM abstraction** - LLM never sees "qBittorrent" or "torrent" in prompts, only generic "movie download" concepts
 
 ## Architecture Overview
 
@@ -26,14 +27,39 @@ User → FastAPI → LangGraph Supervisor
 ```
 User → FastAPI → LangGraph Supervisor
                        ↓
-              Torrent Agent (MCP tools)
+         "Download Manager Agent" (user-facing abstraction)
+                       ↓
+              MCP Tools (qb_search_torrents, qb_list_torrents, etc.)
                        ↓
               LangGraph MCP Client (built-in)
                        ↓
               MCP Server (subprocess/stdio)
                        ↓
-              qBittorrent API
+              qBittorrent API (implementation detail)
 ```
+
+### LLM Abstraction Strategy
+
+**Key Principle**: The LLM should reason about **user intent** (searching for movies, checking downloads), not **implementation details** (qBittorrent, torrents, magnet links).
+
+**Abstraction Layers:**
+
+1. **Agent Prompt Level** (User-Facing)
+   - Agent name: "Download Manager Agent" or "Movie Acquisition Agent"
+   - Concepts: "search for movies", "check download status", "manage downloads"
+   - ❌ Never mention: "qBittorrent", "torrent", "magnet link", "seeders/leechers"
+
+2. **MCP Tool Level** (Technical Interface)
+   - Tool names: `qb_search_torrents`, `qb_list_torrents`, `qb_add_torrent`, `qb_control_torrent`
+   - Tool descriptions: Written for LLMs, using natural language
+   - The LLM sees these tool names but understands them from descriptions, not implementation
+
+3. **MCP Server Level** (Implementation)
+   - Actual qBittorrent API calls
+   - HTTP protocol, authentication, error handling
+   - Completely hidden from LLM
+
+**Result**: LLM uses tools naturally based on descriptions, without knowing it's using qBittorrent under the hood. This allows swapping implementations (e.g., to Transmission, Deluge) without retraining or changing prompts.
 
 ## Migration Strategy
 
@@ -361,56 +387,116 @@ torrent_agent = ToolAgent(
 - Update `torrent_agent` to use 4 MCP tools instead of 2 legacy tools
 - All other agents unchanged
 
-#### 2.4 Update Prompts for New Tool Names
+#### 2.4 Update Agent Prompt (Keep Tool Names Abstract)
 
 **File: `turtleapp/src/core/prompts/agents.py`**
 
-Update torrent manager prompt to reference new tool names:
+**IMPORTANT**: Do NOT mention qBittorrent or technical tool names in prompts. Let the MCP tool descriptions handle the details. The LLM should only know about movie download concepts:
 
 ```python
 TORRENT_MANAGER_PROMPT = PromptTemplate.from_template("""
-You are a specialized download manager agent with access to these tools:
+You are a movie download management expert specializing in movie file acquisition.
 
-**Available Tools:**
-- qb_search_torrents: Search for torrents using natural language queries
-  - Takes: query (movie title, year, keywords)
-  - Returns: List of torrent results with seeders, size, magnet links
+Your capabilities:
+- Search across multiple movie sources and repositories
+- Monitor download progress and status
+- Manage download queue and operations
+- Handle download troubleshooting
 
-- qb_list_torrents: Check status of downloads in the queue
-  - Takes: filter (optional: downloading/completed/paused/all)
-  - Returns: List of torrents with progress, speed, ETA
+**Available Tools:** {tools}
 
-- qb_add_torrent: Add a torrent to the download queue
-  - Takes: url (magnet link or .torrent URL), category (optional)
-  - Returns: Confirmation of added torrent
+**Tool Usage Guidelines:**
+- The tools provided handle all download operations automatically
+- Search for movies by title and year for best results
+- Check download status before searching for duplicates
+- Use appropriate filters when checking download status
+- Provide clear, user-friendly responses to users
 
-- qb_control_torrent: Control torrent (pause/resume/delete)
-  - Takes: hash (torrent hash), action (pause/resume/delete)
-  - Returns: Confirmation of action
+**Task:** {input}
 
-**Your Role:**
-Help users find and download movies. When users ask about downloads:
-1. Use qb_list_torrents to check current download status
-2. Use qb_search_torrents to find new content
-3. Use qb_add_torrent to start downloads
-4. Use qb_control_torrent to manage existing downloads
+**Approach:**
+1. Determine if user wants to search for new movies or check existing downloads
+2. For searches: extract movie title and year if provided
+3. For status checks: get current download information with appropriate filter
+4. For managing downloads: identify the specific download and action needed
+5. Provide clear, actionable information
 
 **Important:**
-- Always search with specific movie titles and years for best results
-- Check download status before searching for duplicates
-- Provide clear, user-friendly responses (avoid technical jargon)
+- Let the tools handle the technical details (you don't need to know implementation)
+- Focus on user intent: search, status, add, or control operations
+- Avoid technical jargon in responses - speak in terms of "movies" and "downloads"
 - Return control to supervisor after completing your task
 
-{agent_scratchpad}
+Use this format:
+Thought: What do I need to do?
+Action: {tool_names}
+Action Input: the input for the action
+Observation: the result of the action
+Thought: What's the result and what should I do next?
+Final Answer: Complete response for the user
 
-User request: {input}
+Begin!
+{agent_scratchpad}
 """)
 ```
 
-**Changes:**
-- Updated tool names from `movie_search`/`movie_download_status` to `qb_search_torrents`/`qb_list_torrents`
-- Added descriptions for all 4 MCP tools
-- Kept user-friendly language (no "torrent" jargon)
+**Key Design Decisions:**
+- ❌ **Don't list specific tool names** (`qb_search_torrents`, etc.) - LangChain provides this via `{tools}` variable
+- ❌ **Don't mention qBittorrent** - Keep abstraction at "movie download manager" level
+- ✅ **Rely on MCP tool descriptions** - They already have good descriptions for the LLM
+- ✅ **Focus on user intent** - Search, status, add, control are the concepts LLM needs
+- ✅ **Keep existing user-friendly language** - "downloads" not "torrents", "movie files" not "magnet links"
+
+**Rationale:**
+The MCP server already has excellent tool descriptions (see `/home/pie/git/mcp-qbittorrent/src/mcp_qbittorrent/tools/qbittorrent_tools.py`). LangGraph will automatically pass these to the LLM via the `{tools}` template variable. We don't need to duplicate them in the prompt - just guide the agent's reasoning approach.
+
+#### 2.5 (Optional) Rename MCP Tools for Better Abstraction
+
+**File: `packages/qbittorrent-mcp/src/mcp_qbittorrent/tools/qbittorrent_tools.py`**
+
+If you want to completely hide qBittorrent from the LLM, you can rename the MCP tools:
+
+```python
+# BEFORE:
+@mcp.tool()
+async def qb_search_torrents(...):
+    """Search for torrents using qBittorrent's built-in search plugins."""
+
+@mcp.tool()
+async def qb_list_torrents(...):
+    """List all torrents with optional filtering."""
+
+@mcp.tool()
+async def qb_add_torrent(...):
+    """Add a torrent by URL or magnet link."""
+
+@mcp.tool()
+async def qb_control_torrent(...):
+    """Control a torrent: pause, resume, or delete."""
+
+# AFTER (optional renaming):
+@mcp.tool()
+async def search_movies(...):
+    """Search for available movies across configured sources."""
+
+@mcp.tool()
+async def list_downloads(...):
+    """List current downloads with optional filtering by status."""
+
+@mcp.tool()
+async def add_download(...):
+    """Add a movie to the download queue."""
+
+@mcp.tool()
+async def control_download(...):
+    """Control a download: pause, resume, or delete."""
+```
+
+**Decision:**
+- **Keep `qb_*` names (recommended)**: Maintains consistency with MCP server source, easier to debug
+- **Rename to abstract names**: Better abstraction but requires maintaining a fork of mcp-qbittorrent
+
+**Recommendation**: Keep the `qb_*` names. The tool descriptions already abstract away implementation details, and the agent prompt avoids mentioning qBittorrent. The LLM will understand these are download management tools from context.
 
 ---
 
@@ -792,14 +878,16 @@ qBittorrent Web API
 
 ### MCP Tools
 
-The download manager agent uses these MCP tools from the qBittorrent server:
+The **download manager agent** uses these MCP tools (implementation: qBittorrent server):
 
-- **qb_search_torrents**: Search for torrents
-- **qb_list_torrents**: List/filter torrents by status
-- **qb_add_torrent**: Add torrent by URL/magnet
-- **qb_control_torrent**: Pause/resume/delete torrents
-- **qb_torrent_info**: Get detailed torrent info
-- **qb_get_preferences**: Get qBittorrent settings
+- **qb_search_torrents**: Search for available movie sources
+- **qb_list_torrents**: List/filter downloads by status (downloading/completed/paused)
+- **qb_add_torrent**: Add a movie to the download queue
+- **qb_control_torrent**: Pause/resume/delete downloads
+- **qb_torrent_info**: Get detailed download information
+- **qb_get_preferences**: Get download client configuration
+
+**Note**: The LLM prompt never mentions "qBittorrent" or "torrent" - it operates at the abstraction level of "movie downloads" and "download management". The MCP tools handle implementation details transparently.
 
 ### Adding New MCP Tools
 
