@@ -1,37 +1,41 @@
-[tool.poetry]
+[project]
 name = "turtleapp"
 version = "0.1.0"
 description = ""
-authors = ["Elisar Chodorov <elisarchod@gmail.com>"]
+authors = [
+    {name = "Elisar Chodorov", email = "elisarchod@gmail.com"},
+]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "python-dotenv>=1.0.1",
+    "langgraph>=0.2.53",
+    "langsmith>=0.3.45",
+    "langchain-pinecone>=0.2.0",
+    "langchain-openai>=0.2.11",
+    "langchain-anthropic>=0.3.17",
+    "langgraph-cli[inmem]>=0.1.65",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "fastapi>=0.115.6",
+    "uvicorn>=0.35.0",
+    "pysmb>=1.2.9",
+    "smbprotocol>=1.14.0",
+    "duckdb>=0.9.0",
+    "langchain>=0.3.26",
+    "jupyter>=1.1.1",
+]
 
-[tool.poetry.scripts]
+[project.scripts]
 turtle-app-server = "turtleapp.api.routes.endpoints:main"
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.13"
-python-dotenv = "^1.0.1"
-langgraph = ">=0.2.53"
-langsmith = ">=0.3.45"
-langchain-pinecone = "^0.2.0"
-langchain-openai = "^0.2.11"
-langchain-anthropic = "^0.3.17"
-langgraph-cli = { extras = ["inmem"], version = "^0.1.65" }
-pydantic = "^2.0.0"
-pydantic-settings = "^2.0.0"
-fastapi = "^0.115.6"
-uvicorn = "^0.35.0"
-pysmb = "^1.2.9"
-smbprotocol = "^1.14.0"
-duckdb = "^0.9.0"
-langchain = "^0.3.26"
-jupyter = "^1.1.1"
-
-[tool.poetry.group.test.dependencies]
-pytest = "^7.0.0"
-pytest-mock = "^3.10.0"
-pytest-asyncio = "^0.21.0"
-pytest-cov = "^4.0.0"
-pytest-xdist = "^3.0.0"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+]
 
 [build-system]
 requires = ["poetry-core"]
@@ -43,13 +47,9 @@ addopts = ["-v", "--color=yes", "--log-cli-level=INFO"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning"
+    "ignore::PendingDeprecationWarning",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "expensive: marks tests that use real LLM calls (deselect with '-m \"not expensive\"')"
+    "expensive: marks tests that use real LLM calls (deselect with '-m \"not expensive\"')",
 ]
-
-
-
-
