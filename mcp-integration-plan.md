@@ -463,17 +463,7 @@ async def _load_mcp_tools():
 
 
 def get_qbittorrent_tools():
-    """Get qBittorrent MCP tools (cached, synchronous).
-
-    Returns:
-        List of tools for qBittorrent operations:
-        - qb_list_torrents: List/filter torrents
-        - qb_torrent_info: Get detailed torrent info
-        - qb_add_torrent: Add torrents by URL/magnet
-        - qb_control_torrent: Pause/resume/delete torrents
-        - qb_search_torrents: Search for torrents
-        - qb_get_preferences: Get qBittorrent settings
-    """
+    """Get all tools from qBittorrent MCP server (cached)."""
     global _mcp_tools_cache
 
     if _mcp_tools_cache is None:
@@ -983,26 +973,26 @@ async def test_mcp_list_tool_execution():
 import pytest
 from turtleapp.src.core.nodes.agents import torrent_agent
 from langgraph.graph import MessagesState
+from langchain_core.messages import HumanMessage
 
 
-@pytest.mark.asyncio
-@pytest.mark.expensive
-async def test_torrent_agent_with_mcp():
+@pytest.mark.expensive  # Not async - agent.process is synchronous
+def test_torrent_agent_with_mcp():
     """Test torrent agent can use MCP tools over HTTP."""
 
-    # Create test state
+    # Create test state (MessagesState expects dict with messages list)
     state = MessagesState(
-        messages=["Search for Ubuntu 22.04 torrents"]
+        messages=[HumanMessage(content="Search for Ubuntu 22.04 torrents")]
     )
 
-    # Invoke agent
-    command = await torrent_agent.process(state)
+    # Invoke agent (returns Command with goto and update)
+    command = torrent_agent.process(state)
 
     # Check response
     assert command.goto == "supervisor"
     assert len(command.update["messages"]) > 0
 
-    response = command.update["messages"][-1].content
+    response = command.update["messages"][0].content
     assert "ubuntu" in response.lower() or "search" in response.lower()
 ```
 
@@ -1017,14 +1007,14 @@ import pytest
 from turtleapp.src.workflows.graph import create_movie_workflow
 
 
-@pytest.mark.asyncio
-@pytest.mark.expensive
-async def test_workflow_with_mcp_search():
+@pytest.mark.expensive  # Not async - workflow.invoke is sync
+def test_workflow_with_mcp_search():
     """Test full workflow handles MCP-based search over HTTP."""
 
-    workflow = create_movie_workflow()
+    # Compile the workflow
+    workflow = create_movie_workflow().compile()
 
-    # Test search query
+    # Test search query (invoke returns tuple of (result, thread_id))
     result, thread_id = workflow.invoke(
         "Search for Ubuntu 22.04 and show me the results"
     )
@@ -1037,12 +1027,12 @@ async def test_workflow_with_mcp_search():
     assert "ubuntu" in final_response.lower() or "search" in final_response.lower()
 
 
-@pytest.mark.asyncio
 @pytest.mark.expensive
-async def test_workflow_with_mcp_status():
+def test_workflow_with_mcp_status():
     """Test workflow handles download status check via MCP HTTP."""
 
-    workflow = create_movie_workflow()
+    # Compile the workflow
+    workflow = create_movie_workflow().compile()
 
     result, thread_id = workflow.invoke(
         "What's currently downloading?"
