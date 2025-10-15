@@ -16,11 +16,7 @@ The Turtle App is your personal AI assistant for home theater management. It can
 
 ## 🏗️ Architecture Overview
 
-The system uses a **multi-agent supervisor architecture** built on LangGraph with **MCP (Model Context Protocol) integration**, where specialized agents handle different aspects of home theater management under the coordination of a supervisor agent.
-
-### MCP Integration
-
-Turtle App leverages **LangGraph's native MCP support** with HTTP transport for modular, reusable integrations. The download manager agent communicates with a separate qBittorrent MCP server via HTTP, providing clean separation between the main application and external services.
+The system uses a **multi-agent supervisor architecture** built on LangGraph, where specialized agents handle different aspects of home theater management under the coordination of a supervisor agent. The download manager integrates via MCP (Model Context Protocol) for clean separation of concerns.
 
 ```mermaid
 graph LR
@@ -169,10 +165,9 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### ⬬ Movie Download Manager Agent
 - **Role**: Movie download management expert
-- **Integration**: qBittorrent MCP server via HTTP transport
+- **Integration**: qBittorrent MCP server (HTTP transport)
 - **Capabilities**: Download monitoring, movie search, progress tracking
-- **Implementation**: MCP tools loaded from `mcp-servers/qbittorrent-mcp/`
-- **Architecture**: Separate Docker container with FastMCP HTTP server
+- **Implementation**: `mcp-servers/qbittorrent-mcp/`
 
 ### 📁 Library Manager Agent
 - **Role**: Local movie library specialist
@@ -205,21 +200,16 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### External Integrations
 
-- **MCP (Model Context Protocol)**: HTTP-based integration with qBittorrent MCP server
-  - **FastMCP**: MCP server framework for exposing qBittorrent tools
-  - **langchain-mcp-adapters**: Native LangGraph MCP client support
+- **qBittorrent MCP Server**: Movie download client management via MCP
 - **Samba/CIFS (pysmb)**: Network file share access
 - **FastAPI**: RESTful API endpoints with synchronous execution
 
 ### Development & Deployment
 
-- **uv**: Fast Python package manager for main app and MCP servers
+- **uv**: Fast Python package manager and dependency management
 - **LangSmith**: Model monitoring, evaluation, prompt management
-- **Docker**: Multi-container deployment with docker-compose
-  - Main application container (Turtle App API)
-  - MCP server container (qBittorrent MCP server)
-  - Supporting services (qBittorrent, Samba)
-- **Testing**: Comprehensive test suite with pytest, including MCP integration tests
+- **Docker**: Containerization for deployment
+- **Testing**: Comprehensive test suite with pytest, async testing, and focused integration tests
 
 ## 🎯 Current Features & Roadmap
 
@@ -285,7 +275,7 @@ This multi-model approach balances cost, performance, and quality across the sys
 
 ### Prerequisites
 - **Python 3.11+**
-- **Poetry** (for dependency management)
+- **uv** (for dependency management) - Install from https://docs.astral.sh/uv/
 - **Docker & Docker Compose** (recommended for easy setup)
 
 ### ⚡ Option 1: Docker Compose (Recommended)
@@ -321,7 +311,6 @@ docker-compose up -d
 
 **🎉 That's it!** Your services are now running:
 - **Turtle App API**: http://localhost:8000
-- **qBittorrent MCP Server**: http://localhost:8001 (MCP HTTP endpoint)
 - **qBittorrent Web UI**: http://localhost:15080 (admin/adminadmin)
 - **Samba Share**: Available on network ports 139/445
 
@@ -359,7 +348,7 @@ git clone <repository-url>
 cd turtle-app
 
 # Install dependencies
-poetry install
+uv sync
 
 # Setup environment
 cp .env.example .env
@@ -377,7 +366,7 @@ docker-compose up -d qbittorrent nas
 #### Step 3: Run the API
 ```bash
 # Start the Turtle App API
-poetry run turtle-app-ep
+uv run uvicorn turtleapp.api.routes.endpoints:app --host 0.0.0.0 --port 8000
 ```
 
 ### 🔧 Configuration Details
@@ -425,35 +414,6 @@ curl -X POST "http://localhost:8000/chat" \
 curl "http://localhost:8000/health"
 ```
 
-## 🔌 MCP Architecture Benefits
-
-The Model Context Protocol architecture provides:
-
-### 🏗️ **Modular Design**
-- MCP servers run as independent microservices
-- Each server can be developed, tested, and deployed separately
-- Easy to add new integrations (Plex, Sonarr, Radarr) without touching main app
-
-### 🚀 **Better Performance**
-- HTTP-based communication with persistent connections
-- MCP servers can be horizontally scaled
-- Reduced coupling between components
-
-### 🧪 **Easier Testing**
-- MCP servers can be tested independently via HTTP
-- Mock MCP responses for unit testing
-- Integration tests via standard HTTP tools (curl, Postman)
-
-### 🔄 **Reusability**
-- qBittorrent MCP server can be used by other applications
-- Standard MCP protocol enables ecosystem growth
-- Community can contribute MCP server implementations
-
-### 🛡️ **Clean Separation**
-- Main app never directly touches qBittorrent API
-- MCP server handles all qBittorrent-specific logic
-- Easy to swap implementations (e.g., switch to Transmission)
-
 ### Testing
 ```bash
 # Run all tests
@@ -465,13 +425,12 @@ uv run pytest --cov=turtleapp
 # Run tests in parallel
 uv run pytest -n auto
 
-# Skip slow/expensive tests
-uv run pytest -m "not slow" -m "not expensive"
+# Skip slow tests
+uv run pytest -m "not slow"
 
 # Run specific test files
 uv run pytest turtleapp/tests/test_api_endpoints.py
 uv run pytest turtleapp/tests/test_mcp_integration.py
-uv run pytest turtleapp/tests/test_agent_mcp.py
 uv run pytest turtleapp/tests/test_library_manager.py
 uv run pytest turtleapp/tests/test_retriever.py
 ```

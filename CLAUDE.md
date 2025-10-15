@@ -103,36 +103,37 @@ The **download manager agent** uses these MCP tools (implementation: qBittorrent
 cd build && docker-compose up -d
 
 # Start API only (requires external services)
-poetry run turtle-app-server
+uv run uvicorn turtleapp.api.routes.endpoints:app --host 0.0.0.0 --port 8000
 
 # Interactive debugging
-python turtleapp/src/workflows/graph.py
+uv run python turtleapp/src/workflows/graph.py
 # Then use: run('your message')
 ```
 
 ### Testing
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
 
 # Run with coverage
-poetry run pytest --cov=turtleapp
+uv run pytest --cov=turtleapp
 
 # Run in parallel
-poetry run pytest -n auto
+uv run pytest -n auto
 
 # Skip slow/expensive tests
-poetry run pytest -m "not slow" -m "not expensive"
+uv run pytest -m "not slow" -m "not expensive"
 
 # Specific test files
-poetry run pytest turtleapp/tests/test_api_endpoints.py
-poetry run pytest turtleapp/tests/test_graph_workflow.py
+uv run pytest turtleapp/tests/test_api_endpoints.py
+uv run pytest turtleapp/tests/test_mcp_integration.py
+uv run pytest turtleapp/tests/test_graph_workflow.py
 ```
 
 ### Data Pipeline
 ```bash
 # Upload movie data to Pinecone vector store
-python turtleapp/src/data_pipeline/vector_store/upload_script.py
+uv run python turtleapp/src/data_pipeline/vector_store/upload_script.py
 ```
 - Data source: `turtleapp/data_pipeline/data/processed/wiki_movie_plots_cleaned.csv`
 - Default: 300 documents per upload (configurable in `MovieDataLoader`)
