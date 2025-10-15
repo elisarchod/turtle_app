@@ -1,13 +1,13 @@
-# Turtle App MCP Integration - Modern Migration Plan v2
+# Turtle App MCP Integration Plan
 
 ## Executive Summary
 
-This plan modernizes the Turtle App migration to leverage **LangGraph's native MCP support** (introduced in langgraph v0.2.34), eliminating the need for custom wrapper layers. The new architecture directly binds MCP tools as LangChain tools, dramatically simplifying the integration.
+This plan migrates Turtle App to leverage **LangGraph's native MCP support** (v0.2.34+), replacing direct qBittorrent HTTP calls with a clean MCP-based architecture. The migration **completely removes** legacy torrent code and uses MCP tools directly, with no custom wrappers needed.
 
-### Key Improvements Over v1
-- ✅ **No custom MCP client wrappers** - LangGraph handles MCP communication natively
-- ✅ **No LangChain tool wrappers** - Direct MCP tool binding via `mcp.get_tools()`
-- ✅ **Simpler architecture** - Remove ~300 lines of unnecessary abstraction code
+### Key Features
+- ✅ **LangGraph native MCP support** - No custom MCP client wrappers needed
+- ✅ **Direct tool binding** - MCP tools automatically converted to LangChain tools via `mcp_client.as_tool()`
+- ✅ **Clean architecture** - Complete removal of legacy qBittorrent HTTP code
 - ✅ **Better performance** - Persistent MCP connections managed by LangGraph
 - ✅ **Less maintenance** - Leverage battle-tested LangGraph MCP client
 - ✅ **LLM abstraction** - LLM never sees "qBittorrent" or "torrent" in prompts, only generic "movie download" concepts
@@ -504,59 +504,186 @@ async def control_download(...):
 
 **Duration: 1 hour**
 
-#### 3.1 Mark Legacy Tools as Deprecated
+#### 3.1 Delete Legacy Torrent Tools
 
-**File: `turtleapp/src/core/tools/torrent_tools.py`**
+**File: `turtleapp/src/core/tools/torrent_tools.py`** - **DELETE ENTIRELY**
 
-Add deprecation notice at top:
-```python
-"""
-DEPRECATED: Legacy qBittorrent HTTP tools.
-
-This module is replaced by MCP-based tools in:
-    turtleapp/src/core/mcp/tools.py
-
-These tools will be removed after successful MCP migration.
-DO NOT USE IN NEW CODE.
-"""
-import warnings
-warnings.warn(
-    "torrent_tools.py is deprecated. Use turtleapp.src.core.mcp.tools instead",
-    DeprecationWarning,
-    stacklevel=2
-)
-
-# ... rest of file unchanged for now ...
+```bash
+# Remove the file completely
+rm turtleapp/src/core/tools/torrent_tools.py
 ```
 
-#### 3.2 Remove Legacy Settings
+**What to remove:**
+- ❌ `api_call()` function - replaced by MCP server's qBittorrent client
+- ❌ `get_torrents()` function - replaced by `qb_list_torrents` MCP tool
+- ❌ `search_torrents()` function - replaced by `qb_search_torrents` MCP tool
+- ❌ `TorrentDownloadsTool` class - replaced by `qb_list_torrents` MCP tool
+- ❌ `TorrentSearchTool` class - replaced by `qb_search_torrents` MCP tool
+- ❌ All direct HTTP calls to qBittorrent API
+
+**Rationale:**
+- No need for deprecation warnings - clean break
+- MCP provides all functionality (and more)
+- Keeping old code creates confusion and maintenance burden
+- No backward compatibility needed (internal implementation detail)
+
+#### 3.2 Update Tools Module Exports
+
+**File: `turtleapp/src/core/tools/__init__.py`**
+
+Remove torrent tool exports:
+
+```python
+"""Tool exports for turtle app agents."""
+
+# Existing tools (keep)
+from turtleapp.src.core.tools.movie_summaries_retriever import movie_retriever_tool
+from turtleapp.src.core.tools.library_manager import library_manager_tool
+
+# REMOVED: torrent tool exports
+# from turtleapp.src.core.tools.torrent_tools import (
+#     torrent_search_tool,
+#     torrent_download_tool
+# )
+
+# Export only non-MCP tools
+__all__ = [
+    "movie_retriever_tool",
+    "library_manager_tool",
+]
+```
+
+#### 3.3 Simplify Settings - Remove qBittorrent Config
 
 **File: `turtleapp/settings.py`**
 
-Update settings to move qBittorrent config responsibility to MCP server:
+Remove qBittorrent settings entirely - MCP server has its own config:
 
 ```python
-# BEFORE: (keep for now during migration)
-class QBittorrentSettings(BaseModel):
-    host: str
-    credentials: dict
+# BEFORE: (DELETE THIS)
+# class QBittorrentSettings(BaseModel):
+#     host: str
+#     credentials: dict
 
-# NEW: Add MCP config
+# NEW: Only MCP config needed
 class MCPSettings(BaseModel):
-    """MCP server paths and commands."""
+    """MCP server configuration."""
     qbittorrent_server_path: str = "packages/qbittorrent-mcp"
+    qbittorrent_command: list[str] = ["uv", "run", "mcp-qbittorrent"]
 
 class Settings(BaseSettings):
-    # ... existing settings ...
+    # Existing settings
+    pinecone: PineconeSettings
+    openai: OpenAISettings
+    models: ModelSettings
 
-    # Keep for MCP env vars (used in mcp/config.py)
-    qbittorrent: QBittorrentSettings
-
-    # NEW
+    # NEW: MCP configuration
     mcp: MCPSettings = MCPSettings()
+
+    # REMOVED: qbittorrent settings (now in MCP server's .env)
+    # qbittorrent: QBittorrentSettings  # DELETE THIS
 ```
 
-**Note:** We keep qBittorrent settings temporarily since MCP config needs them. After migration stabilizes, these can move to MCP server's `.env` only.
+**Rationale:**
+- qBittorrent credentials belong in MCP server's environment, not main app
+- Main app only needs to know how to start MCP server subprocess
+- Cleaner separation of concerns
+
+#### 3.4 Update MCP Config to Use Environment Variables
+
+**File: `turtleapp/src/core/mcp/config.py`**
+
+Since we removed qBittorrent settings from main app, pass them as env vars to MCP server:
+
+```python
+"""MCP server configuration for LangGraph native integration."""
+
+import os
+from typing import Dict, Any
+from pydantic import BaseModel
+from turtleapp.settings import settings
+
+
+class MCPServerConfig(BaseModel):
+    """Configuration for MCP server connection."""
+    command: str
+    args: list[str]
+    env: Dict[str, str]
+
+
+def get_qbittorrent_mcp_config() -> MCPServerConfig:
+    """Get qBittorrent MCP server configuration for LangGraph.
+
+    The MCP server reads its own configuration from environment variables
+    with TURTLEAPP_QB_ prefix. We pass through the host environment or
+    use defaults for Docker.
+    """
+    return MCPServerConfig(
+        command="uv",
+        args=["run", "mcp-qbittorrent"],
+        env={
+            # Pass through environment variables for MCP server
+            # These should be set in .env or docker-compose.yml
+            "TURTLEAPP_QB_QBITTORRENT_URL": os.getenv(
+                "TURTLEAPP_QB_QBITTORRENT_URL",
+                "http://qbittorrent:15080"  # Docker default
+            ),
+            "TURTLEAPP_QB_QBITTORRENT_USERNAME": os.getenv(
+                "TURTLEAPP_QB_QBITTORRENT_USERNAME",
+                "admin"
+            ),
+            "TURTLEAPP_QB_QBITTORRENT_PASSWORD": os.getenv(
+                "TURTLEAPP_QB_QBITTORRENT_PASSWORD",
+                "adminadmin"
+            ),
+        }
+    )
+```
+
+**Key Changes:**
+- Read qBittorrent config from environment directly
+- Don't depend on `settings.qbittorrent` (deleted)
+- Provide Docker defaults for convenience
+
+#### 3.5 Update Environment Variables
+
+**File: `.env.example`**
+
+Update env var documentation:
+
+```bash
+# OpenAI API (for embeddings)
+OPENAI_API_KEY=your_openai_key
+
+# Anthropic API (for LLMs)
+CLAUDE_API=your_anthropic_key
+
+# Pinecone Vector DB
+PINECONE_API_KEY=your_pinecone_key
+PINECONE_ENVIRONMENT=your_environment
+PINECONE_INDEX_NAME=your_index
+
+# LangSmith (optional)
+LANGCHAIN_API_KEY=your_langsmith_key
+LANGCHAIN_TRACING_V2=true
+
+# ============================================
+# MCP Server Configuration
+# ============================================
+# qBittorrent MCP Server
+TURTLEAPP_QB_QBITTORRENT_URL=http://qbittorrent:15080
+TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
+TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
+
+# REMOVED: Old qBittorrent settings (no longer needed)
+# QBITTORRENT_HOST=...
+# QBITTORRENT_USERNAME=...
+# QBITTORRENT_PASSWORD=...
+```
+
+**Migration Note:**
+- Old env vars (`QBITTORRENT_*`) → New env vars (`TURTLEAPP_QB_*`)
+- This matches the MCP server's expected env prefix
 
 ---
 
@@ -979,9 +1106,13 @@ The app leverages **LangGraph's native MCP support** for modular, reusable integ
 - [ ] Test tools load: `poetry run python -c "from turtleapp.src.core.mcp.tools import get_qbittorrent_tools; print(len(get_qbittorrent_tools()))"`
 
 #### Phase 3: Remove Legacy Code (1 hour)
-- [ ] Mark `torrent_tools.py` as deprecated
-- [ ] Add deprecation warnings
-- [ ] Update settings for MCP config
+- [ ] Delete `turtleapp/src/core/tools/torrent_tools.py` entirely
+- [ ] Remove torrent tool exports from `turtleapp/src/core/tools/__init__.py`
+- [ ] Remove `QBittorrentSettings` from `turtleapp/settings.py`
+- [ ] Add `MCPSettings` to `turtleapp/settings.py`
+- [ ] Update MCP config to read env vars directly
+- [ ] Update `.env.example` with new `TURTLEAPP_QB_*` env vars
+- [ ] Update local `.env` with new env var names
 
 #### Phase 4: Testing (4-5 hours)
 - [ ] Create `test_mcp_integration.py`
@@ -1015,28 +1146,6 @@ The app leverages **LangGraph's native MCP support** for modular, reusable integ
 
 ---
 
-## Comparison: v1 vs v2 Plan
-
-| Aspect | v1 (Custom Wrappers) | v2 (LangGraph Native) |
-|--------|---------------------|----------------------|
-| **MCP Client** | Custom `QBittorrentMCPClient` class | LangGraph built-in `get_mcp_client()` |
-| **Tool Wrappers** | Custom `TorrentSearchTool` classes extending `BaseTool` | Direct MCP tool binding via `mcp_client.as_tool()` |
-| **Lines of Code** | ~300 lines of wrapper code | ~100 lines of config/loader code |
-| **Maintenance** | Custom protocol handling, error handling | Leverage LangGraph's battle-tested MCP |
-| **Performance** | Manual connection management | Automatic connection pooling |
-| **Session Handling** | Manual `connect()`/`disconnect()` | Managed by LangGraph |
-| **Error Handling** | Custom retry logic | Built-in MCP error handling |
-| **Tool Schema** | Manual TypedDict mapping | Automatic from MCP tool spec |
-
-**Key Simplifications in v2:**
-- ❌ No `QBittorrentMCPClient` class - use `get_mcp_client()`
-- ❌ No `TorrentSearchTool`/`TorrentStatusTool` wrappers - use `mcp_client.as_tool()`
-- ❌ No `get_mcp_client()` singleton factory - LangGraph handles it
-- ❌ No custom session management - LangGraph handles it
-- ✅ Just `get_qbittorrent_tools()` loader function
-
----
-
 ## Timeline Estimate
 
 | Phase | Tasks | Estimated Time |
@@ -1049,8 +1158,6 @@ The app leverages **LangGraph's native MCP support** for modular, reusable integ
 | 5 | Docker & deployment | 2-3 hours |
 | 6 | Documentation | 1-2 hours |
 | **Total** | | **14-18 hours** |
-
-**Comparison:** v1 plan estimated 20-30 hours vs v2 at 14-18 hours (30-40% faster)
 
 ---
 
@@ -1082,13 +1189,17 @@ The app leverages **LangGraph's native MCP support** for modular, reusable integ
 
 - [ ] All existing API endpoints work unchanged
 - [ ] All tests pass (unit + integration)
-- [ ] No direct qBittorrent HTTP calls in graph code
+- [ ] **No `torrent_tools.py` file exists** - completely removed
+- [ ] **No `QBittorrentSettings` in main app settings** - removed
+- [ ] **No direct qBittorrent HTTP calls anywhere** in main app code
+- [ ] **No qBittorrent imports** in main app (except MCP config passing env vars)
 - [ ] MCP server can be tested independently
 - [ ] Docker Compose deployment works
 - [ ] Documentation accurate and up-to-date
 - [ ] Performance within 10% of legacy implementation
 - [ ] No user-facing regressions
 - [ ] Code is simpler and more maintainable than v1
+- [ ] **Main app is agnostic to download backend** - could swap qBittorrent for Transmission without touching agent code
 
 ---
 
