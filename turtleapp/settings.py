@@ -63,19 +63,13 @@ class SMBSettings(BaseAppSettings):
         return {}
 
 
-class QBittorrentSettings(BaseAppSettings):
-    host: Optional[str] = Field(alias="QBITTORRENT_HOST", description="qBittorrent Web UI host (e.g., http://localhost:8080)")
-    username: Optional[str] = Field(alias="QBITTORRENT_USER", description="qBittorrent Web UI username")
-    password: Optional[str] = Field(alias="QBITTORRENT_PASSWORD", description="qBittorrent Web UI password")
-    
-    @property
-    def credentials(self) -> dict[str, str]:
-        if self.username and self.password:
-            return {
-                'username': self.username,
-                'password': self.password
-            }
-        return {}
+class MCPSettings(BaseAppSettings):
+    """MCP server configuration (HTTP transport)."""
+    qbittorrent_url: str = Field(
+        alias="TURTLEAPP_MCP_QBITTORRENT_URL",
+        default="http://mcp-qbittorrent:8000/mcp",
+        description="HTTP URL for qBittorrent MCP server"
+    )
 
 
 class Settings(BaseAppSettings):
@@ -89,7 +83,7 @@ class Settings(BaseAppSettings):
     
     data: DataSettings = Field(default_factory=DataSettings)
     smb: SMBSettings = Field(default_factory=SMBSettings)
-    qbittorrent: QBittorrentSettings = Field(default_factory=QBittorrentSettings)
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
 
 
 settings = Settings()

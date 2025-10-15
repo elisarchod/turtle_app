@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+    volumes:
+      - qbittorrent-config:/config
+      - qbittorrent-downloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 15080:8080
+    restart: unless-stopped
+    networks:
+      - media-network
+
+  mcp-qbittorrent:
+    image: python:3.11-slim
+    container_name: mcp-qbittorrent
+    environment:
+      - QB_MCP_QBITTORRENT_URL=http://qbittorrent:8080
+      - QB_MCP_QBITTORRENT_USERNAME=admin
+      - QB_MCP_QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+    volumes:
+      - ..:/app
+    working_dir: /app
+    command: >
+      sh -c "pip install uv --break-system-packages &&
+             uv sync --frozen &&
+             uv run python -m mcp_qbittorrent.server"
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+    networks:
+      - media-network
+
+networks:
+  media-network:
+    driver: bridge
+
+volumes:
+  qbittorrent-config:
+  qbittorrent-downloads:

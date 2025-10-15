@@ -2,15 +2,25 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install poetry
+# Install system dependencies including curl for health checks
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml poetry.lock* ./
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY . .
+# Copy application code
+COPY turtleapp/ ./turtleapp/
+COPY pyproject.toml ./
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --only=main --no-interaction --no-ansi
+# Install dependencies (including langchain-mcp-adapters)
+RUN uv sync --frozen
 
+# Expose API port
 EXPOSE 8000
 
-CMD ["poetry", "run", "turtle-app-server"]
+# Run FastAPI server
+CMD ["uv", "run", "uvicorn", "turtleapp.api.routes.endpoints:app", "--host", "0.0.0.0", "--port", "8000"]

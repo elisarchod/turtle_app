@@ -18,6 +18,30 @@ services:
       - 1080:1080
     restart: unless-stopped
 
+  # NEW: MCP Server (separate container with HTTP endpoint)
+  mcp-qbittorrent:
+    build:
+      context: ../mcp-servers/qbittorrent-mcp
+      dockerfile: Dockerfile
+    container_name: mcp-qbittorrent
+    environment:
+      # MCP server connects to qBittorrent
+      - TURTLEAPP_QB_QBITTORRENT_URL=http://qbittorrent:15080
+      - TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
+      - TURTLEAPP_QB_QBITTORRENT_PASSWORD=${QB_PASSWORD:-adminadmin}
+    ports:
+      - "8001:8000"  # Expose HTTP endpoint for debugging
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/mcp/tools"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   nas:
     image: dperson/samba
     container_name: samba
@@ -38,6 +62,7 @@ services:
       -u "${SAMBA_USER:-dave};${SAMBA_PASSWORD:-password}"
       -w "WORKGROUP"
 
+  # UPDATED: Turtle App (connects to MCP server via HTTP)
   turtle-app-api:
     build:
       context: ..
@@ -46,8 +71,10 @@ services:
     env_file:
       - ../.env.local
     environment:
-      # Override for internal Docker network communication
-      - QBITTORRENT_HOST=http://qbittorrent:15080
+      # MCP server URL (HTTP transport)
+      - TURTLEAPP_MCP_QBITTORRENT_URL=http://mcp-qbittorrent:8000/mcp
+
+      # Other existing env vars
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
     ports:
       - 8000:8000
@@ -55,8 +82,10 @@ services:
     networks:
       - default
     depends_on:
-      - qbittorrent
-      - nas
+      mcp-qbittorrent:
+        condition: service_healthy
+      nas:
+        condition: service_started
 
 networks:
   default:

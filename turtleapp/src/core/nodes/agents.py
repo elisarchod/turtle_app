@@ -11,8 +11,9 @@ from langgraph.types import Command
 
 from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
-from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_MANAGER_PROMPT
-from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool, torrent_download_tool, torrent_search_tool
+from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT
+from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool
+from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
 
 
 
@@ -72,4 +73,10 @@ def library_scan_node(state: MessagesState) -> Command[Literal["supervisor"]]:
 
 
 movie_retriever_agent = ToolAgent([movie_retriever_tool], specialized_prompt=MOVIE_RETRIEVER_PROMPT)
-torrent_agent = ToolAgent([torrent_download_tool, torrent_search_tool], name="movies_download_manager", specialized_prompt=TORRENT_MANAGER_PROMPT)
+
+# Download manager agent - uses MCP tools from qBittorrent MCP server
+torrent_agent = ToolAgent(
+    get_qbittorrent_tools(),  # Returns all MCP tools ready to use
+    name="movies_download_manager"
+    # No specialized_prompt - uses AGENT_BASE_PROMPT default
+)

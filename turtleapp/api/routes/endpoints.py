@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
@@ -6,10 +7,24 @@ from pydantic import BaseModel, Field
 
 from turtleapp.src.utils import logger
 from turtleapp.src.workflows.graph import movie_workflow_agent
+from turtleapp.src.core.mcp.tools import cleanup_mcp_client
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle (startup/shutdown)."""
+    # Startup
+    # MCP client initializes lazily on first tool use
+    yield
+
+    # Shutdown - cleanup MCP HTTP connections
+    await cleanup_mcp_client()
+
 
 app = FastAPI(
     title="Turtle App - Home Theater Assistant",
-    description="AI-powered home theater management system with multi-agent orchestration"
+    description="AI-powered home theater management system with multi-agent orchestration",
+    lifespan=lifespan
 )
 
 
