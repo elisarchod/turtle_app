@@ -1,20 +1,20 @@
-# 🎬 Turtle App - AI-Powered Home Theater Assistant
+# Turtle App - AI-Powered Home Theater Assistant
 
 Every movie night starts the same, you spend hours searching for the perfect film, only to end up watching the same old favorites. **Turtle App is here to change that!**
 
 This is a management system that combines Large Language Models (LLMs), Retrieval Augmented Generation (RAG), and multi-agent orchestration to provide a unified interface for managing your personal movie collection, discovering new content, and controlling media downloads.
 
-## 🎯 What Does This Do?
+## What Does This Do?
 
 The Turtle App is your personal AI assistant for home theater management. It can:
 
-- **🔍 Answer questions about movies** using a comprehensive database of movie summaries and metadata
-- **💾 Manage your local movie library** by scanning and indexing your collection
-- **⬬ Handle movie downloads** through integration with download client
-- **🤖 Maintain conversation context** across multiple interactions
-- **🌐 Deploy as a web service** with RESTful API endpoints
+- **Answer questions about movies** using a comprehensive database of movie summaries and metadata
+- **Manage your local movie library** by scanning and indexing your collection
+- **Handle movie downloads** through integration with download client
+- **Maintain conversation context** across multiple interactions
+- **Deploy as a web service** with RESTful API endpoints
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 The system uses a **multi-agent supervisor architecture** built on LangGraph, where specialized agents handle different aspects of home theater management under the coordination of a supervisor agent. The download manager integrates via MCP (Model Context Protocol) for clean separation of concerns.
 
@@ -22,37 +22,37 @@ The system uses a **multi-agent supervisor architecture** built on LangGraph, wh
 graph LR
     %% Define Groups
     subgraph Input
-        User["🧑 User"]
+        User["User"]
     end
 
     subgraph Orchestration
-        Supervisor["🎯 Supervisor Agent"]
+        Supervisor["Supervisor Agent"]
     end
 
     subgraph Agents
         direction TB
-        MovieRetriever["🎬 Movie Retriever"]
-        DownloadManager["⬇️ Download Manager"]
-        LibraryManager["📁 Library Manager"]
+        MovieRetriever["Movie Retriever"]
+        DownloadManager["Download Manager"]
+        LibraryManager["Library Manager"]
     end
 
     subgraph MCP["MCP Layer"]
         direction TB
-        MCPServer["🔌 MCP Server<br/>(HTTP Transport)"]
+        MCPServer["MCP Server<br/>(HTTP Transport)"]
     end
 
     subgraph ExternalSystems["External Systems & Data"]
         direction TB
-        PineconeDB["🗄️ Pinecone DB"]
-        QBittorrent["🌀 qBittorrent<br/>Web API"]
-        NetworkShare["📚 Local Network Share"]
+        PineconeDB["Pinecone DB"]
+        QBittorrent["qBittorrent<br/>Web API"]
+        NetworkShare["Local Network Share"]
     end
 
     subgraph BackendServices["Backend & Data Sources"]
         direction TB
-        LLM["🧠 Claude 3.5 (Anthropic)"]
+        LLM["Claude 3.5 (Anthropic)"]
         Embeddings["OpenAI Embeddings"]
-        CMUCorpus["💾 CMU Movie Corpus"]
+        CMUCorpus["CMU Movie Corpus"]
     end
 
     %% Define Flow
@@ -70,7 +70,7 @@ graph LR
 ```
 
 
-## 💬 Usage Examples
+## Usage Examples
 
 ### Movie Information & Recommendations
 
@@ -132,7 +132,7 @@ sequenceDiagram
   S ->> U: Star Wars files found. You have "Empire Strikes Back" locally.
 ```
 
-## 🧠 Design Assumptions & Model Selection
+## Design Assumptions & Model Selection
 
 ### Why Different Models for Different Roles?
 
@@ -156,37 +156,37 @@ We deliberately avoid using technical terms like "torrent" when describing tools
 
 This multi-model approach balances cost, performance, and quality across the system's different needs.
 
-## 🔧 Components Deep Dive
+## Components Deep Dive
 
-### 🎯 Supervisor Agent
+### Supervisor Agent
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
 - **Technology**: Claude 3.5 Sonnet with custom routing prompts
 - **Implementation**: `turtleapp/src/nodes/supervisor.py`
 
-### 🎬 Movie Retriever Agent (RAG)
+### Movie Retriever Agent (RAG)
 - **Role**: Movie database expert with 42,000+ movie summaries
 - **Data Source**: Pinecone vector database with CMU Movie Summary Corpus
 - **Capabilities**: Movie recommendations, plot analysis, metadata retrieval
 - **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
 
-### ⬬ Movie Download Manager Agent
+### Movie Download Manager Agent
 - **Role**: Movie download management expert
 - **Integration**: qBittorrent MCP server (HTTP transport)
 - **Capabilities**: Download monitoring, movie search, progress tracking
 - **Implementation**: `mcp-servers/qbittorrent-mcp/`
 
-### 📁 Library Manager Agent
+### Library Manager Agent
 - **Role**: Local movie library specialist
 - **Integration**: Samba/CIFS network shares
 - **Capabilities**: Library scanning, file organization, statistics
 - **Implementation**: `turtleapp/src/core/tools/library_manager.py`
 
-### 🌐 API Layer
+### API Layer
 - **Technology**: FastAPI with synchronous endpoints
 - **Endpoints**: `/chat` (main), `/health` (status)
 - **Implementation**: `turtleapp/api/routes/endpoints.py`
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Core Framework
 
@@ -217,16 +217,16 @@ This multi-model approach balances cost, performance, and quality across the sys
 - **Docker**: Containerization for deployment
 - **Testing**: Comprehensive test suite with pytest, async testing, and focused integration tests
 
-## 🎯 Current Features & Roadmap
+## Current Features & Roadmap
 
-### ✅ Implemented Features
+### Implemented Features
 
-- **🤖 Multi-Agent System**: Fully functional supervisor with three specialized agents
-- **🔍 Movie RAG System**: Vector search with 42,000+ movie summaries
-- **⬬ Download Integration**: Download client API integration for movie file management
-- **📁 Library Management**: SMB/CIFS network share scanning
-- **🌐 REST API**: FastAPI endpoint for external interactions
-- **💾 Data Pipeline**: Movie data processing and vector store upload
+- **Multi-Agent System**: Fully functional supervisor with three specialized agents
+- **Movie RAG System**: Vector search with 42,000+ movie summaries
+- **Download Integration**: Download client API integration for movie file management
+- **Library Management**: SMB/CIFS network share scanning
+- **REST API**: FastAPI endpoint for external interactions
+- **Data Pipeline**: Movie data processing and vector store upload
   - **Data Pipeline Manager** (`turtleapp/data_pipeline/vector_store/vector_store_manager.py`):
     - `MovieDataLoader`: Loads movie data from CSV files with configurable limits (default: 300 documents)
     - `PineconeVectorStoreManager`: Manages Pinecone index creation and document uploads
@@ -239,52 +239,52 @@ This multi-model approach balances cost, performance, and quality across the sys
   - **Data Storage** (`turtleapp/data_pipeline/data/processed/`):
     - `wiki_movie_plots_cleaned.csv`: Processed movie plot data from CMU Movie Summary Corpus
     - Contains movie summaries, metadata, and plot descriptions for vector embedding
-- **🧪 Testing**: Comprehensive test suite for all core components
-- **🏗️ Enhanced Architecture**: 
+- **Testing**: Comprehensive test suite for all core components
+- **Enhanced Architecture**:
   - **Tool Organization**: Tools are now direct instances (`movie_retriever_tool`, `library_manager_tool`, etc.) wrapped by generic `ToolAgent` class
   - **Agent Reliability**: `AgentExecutor` with `handle_parsing_errors=True` and `max_iterations=3`
   - **Simplified Constants**: Removed unnecessary `ConfigKeys` enum in favor of direct string literals
   - **Graph Encapsulation**: `invoke()` method handles thread management and configuration
 
-### 🚧 In Development
+### In Development
 
-- **🔄 Enhanced Integration**
+- **Enhanced Integration**
   - [ ] Real-time torrent progress monitoring
   - [ ] Automatic library refresh after downloads
   - [ ] Cross-platform media player integration
   - [ ] Subtitle and metadata management
 
-### ✅ Recently Completed
+### Recently Completed
 
-- **🧠 Prompt Engineering**: Custom supervisor routing, specialized agent prompts, enhanced tool descriptions
-- **🔧 Code Quality**: Simplified constants, improved error handling, cleaner architecture
-- **⚡ Sync Architecture**: Full synchronous processing for better compatibility
-- **🧪 Testing**: Comprehensive test suite with integration testing
-- **🛠️ Tool Optimization**: Multi-tool agents, flexible parameters, improved memory management
+- **Prompt Engineering**: Custom supervisor routing, specialized agent prompts, enhanced tool descriptions
+- **Code Quality**: Simplified constants, improved error handling, cleaner architecture
+- **Sync Architecture**: Full synchronous processing for better compatibility
+- **Testing**: Comprehensive test suite with integration testing
+- **Tool Optimization**: Multi-tool agents, flexible parameters, improved memory management
 
-### 🗺️ Future Roadmap
+### Future Roadmap
 
-- **📱 User Interfaces**
+- **User Interfaces**
   - [ ] Telegram bot integration for mobile access
   - [ ] Web-based dashboard with Streamlit
 
-- **🧠 AI Enhancements**
+- **AI Enhancements**
   - [ ] Self-hosted LLM support (Ollama, DeepSeek R1)
   - [ ] Multi-modal support (movie posters, trailers)
   - [ ] Sentiment analysis of user preferences
 
-- **📊 Analytics & Optimization**
+- **Analytics & Optimization**
   - [ ] Usage analytics and recommendation improvement
   - [ ] Token cost optimization strategies
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Python 3.11+**
 - **uv** (for dependency management) - Install from https://docs.astral.sh/uv/
 - **Docker & Docker Compose** (recommended for easy setup)
 
-### ⚡ Option 1: Docker Compose (Recommended)
+### Option 1: Docker Compose (Recommended)
 
 **This is the easiest way to get started!** Docker Compose will set up all the infrastructure services for you.
 
@@ -315,7 +315,7 @@ cd build
 docker-compose up -d
 ```
 
-**🎉 That's it!** Your services are now running:
+**That's it!** Your services are now running:
 - **Turtle App API**: http://localhost:8000
 - **MCP qBittorrent Server**: http://localhost:8001 (HTTP MCP endpoint)
 - **qBittorrent Web UI**: http://localhost:15080 (admin/adminadmin)
@@ -389,7 +389,7 @@ docker-compose up -d qbittorrent nas
 uv run uvicorn turtleapp.api.routes.endpoints:app --host 0.0.0.0 --port 8000
 ```
 
-### 🔧 Configuration Details
+### Configuration Details
 
 #### Docker Compose (Default Setup)
 The `.env.example` file is pre-configured for Docker Compose with sensible defaults:
