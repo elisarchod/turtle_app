@@ -157,25 +157,56 @@ async def qb_search_torrents(query: str, limit: int = 10):
 
 **Duration: 1 hour**
 
-#### 0.1 Verify LangGraph Version & Install MCP Adapters
+#### 0.1 Convert from Poetry to uv (Optional but Recommended)
+
+```bash
+cd /home/pie/git/turtle_app
+
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Initialize uv.lock from pyproject.toml
+uv lock
+
+# Verify dependencies resolve correctly
+uv sync
+
+# Test that existing code works with uv
+uv run python -c "import langgraph; print(langgraph.__version__)"
+```
+
+**Why uv?**
+- ✅ **10-100x faster** than Poetry for dependency resolution
+- ✅ **Consistent with MCP server** - already uses uv
+- ✅ **Simpler Docker builds** - single tool for dependencies
+- ✅ **Better caching** - faster CI/CD pipelines
+- ✅ **Works with existing pyproject.toml** - no migration needed
+
+**Note:** You can keep `pyproject.toml` unchanged - uv reads the same format as Poetry.
+
+---
+
+#### 0.2 Verify LangGraph Version & Install MCP Adapters
 
 ```bash
 cd /home/pie/git/turtle_app
 
 # Check LangGraph version
-poetry show langgraph | grep "version"
+uv pip list | grep langgraph
 # Must be >= 0.2.34 for native MCP support
 
 # Install langchain-mcp-adapters (NEW)
-poetry add langchain-mcp-adapters
+uv add langchain-mcp-adapters
 ```
 
 If LangGraph upgrade needed:
 ```bash
-poetry add langgraph@latest
+uv add langgraph --upgrade
 ```
 
-#### 0.2 Copy MCP Server to Monorepo
+---
+
+#### 0.3 Copy MCP Server to Monorepo
 
 ```bash
 # Create packages structure
@@ -190,7 +221,7 @@ cd packages/qbittorrent-mcp
 # To:     name = "turtleapp-qbittorrent-mcp"
 ```
 
-#### 0.3 Create Feature Branch
+#### 0.4 Create Feature Branch
 
 ```bash
 git checkout -b feat/mcp-http-integration
@@ -322,7 +353,7 @@ This is the core migration - replacing custom tools with MCP-native tools over H
 Ensure `langchain-mcp-adapters` is installed:
 
 ```bash
-poetry add langchain-mcp-adapters
+uv add langchain-mcp-adapters
 ```
 
 #### 2.2 Create MCP Configuration Module
@@ -1109,22 +1140,22 @@ export TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 uv run fastmcp run mcp_qbittorrent.server:mcp --transport http
 
 # 2. Test MCP tools load correctly (main terminal)
-poetry run pytest turtleapp/tests/test_mcp_integration.py::test_mcp_tools_load -v
+uv run pytest turtleapp/tests/test_mcp_integration.py::test_mcp_tools_load -v
 
 # 3. Test individual tool execution (requires MCP server)
-poetry run pytest turtleapp/tests/test_mcp_integration.py -m expensive -v
+uv run pytest turtleapp/tests/test_mcp_integration.py -m expensive -v
 
 # 4. Test agent with MCP tools
-poetry run pytest turtleapp/tests/test_agent_mcp.py -m expensive -v
+uv run pytest turtleapp/tests/test_agent_mcp.py -m expensive -v
 
 # 5. Test full workflow
-poetry run pytest turtleapp/tests/test_graph_mcp.py -m expensive -v
+uv run pytest turtleapp/tests/test_graph_mcp.py -m expensive -v
 
 # 6. Run all tests (skip expensive by default)
-poetry run pytest -m "not expensive" -v
+uv run pytest -m "not expensive" -v
 
 # 7. Run full test suite including MCP
-poetry run pytest -v
+uv run pytest -v
 ```
 
 ---
@@ -1230,32 +1261,32 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including uv
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 # Copy application code
 COPY turtleapp/ ./turtleapp/
-COPY pyproject.toml poetry.lock ./
-
-# Install Poetry
-RUN pip install poetry
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies (including langchain-mcp-adapters)
-RUN poetry install --no-dev
+RUN uv sync --frozen
 
 # Expose API port
 EXPOSE 8000
 
 # Run FastAPI server
-CMD ["poetry", "run", "uvicorn", "turtleapp.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "turtleapp.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 **Key Changes:**
-- ❌ **No `uv` needed** - MCP server is separate container, not subprocess
+- ✅ **Uses `uv` instead of Poetry** - Faster, consistent with MCP server
 - ❌ **No MCP server code copied** - Clean separation
 - ✅ **Only `langchain-mcp-adapters` needed** - For HTTP MCP client
 
@@ -1463,14 +1494,21 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 #### Pre-Migration
 - [ ] Backup current codebase: `git branch backup-pre-mcp-$(date +%Y%m%d)`
 - [ ] Create feature branch: `git checkout -b feat/mcp-http-integration`
-- [ ] Verify LangGraph >= 0.2.34: `poetry show langgraph`
 - [ ] Document current API behavior for regression testing
 
-#### Phase 0: Setup (1 hour)
-- [ ] Install `langchain-mcp-adapters`: `poetry add langchain-mcp-adapters`
-- [ ] Copy MCP server to `packages/qbittorrent-mcp/`
-- [ ] Update MCP server package name in its `pyproject.toml`
-- [ ] Test MCP HTTP server runs: `cd packages/qbittorrent-mcp && uv run fastmcp run mcp_qbittorrent.server:mcp --transport http`
+#### Phase 0: Setup (1-2 hours)
+- [ ] **Convert to uv (optional but recommended):**
+  - [ ] Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - [ ] Initialize uv.lock: `uv lock`
+  - [ ] Verify sync: `uv sync`
+  - [ ] Test imports: `uv run python -c "import langgraph; print(langgraph.__version__)"`
+- [ ] **Install MCP dependencies:**
+  - [ ] Verify LangGraph >= 0.2.34: `uv pip list | grep langgraph`
+  - [ ] Install `langchain-mcp-adapters`: `uv add langchain-mcp-adapters`
+- [ ] **Copy MCP server:**
+  - [ ] Copy MCP server to `packages/qbittorrent-mcp/`
+  - [ ] Update MCP server package name in its `pyproject.toml`
+  - [ ] Test MCP HTTP server runs: `cd packages/qbittorrent-mcp && uv run fastmcp run mcp_qbittorrent.server:mcp --transport http`
 
 #### Phase 1: MCP Server HTTP Setup (2-3 hours)
 - [ ] Update MCP server config.py env prefix to `TURTLEAPP_QB_`
@@ -1484,7 +1522,7 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 - [ ] Update `turtleapp/src/core/nodes/agents.py` to use MCP tools
 - [ ] Update `turtleapp/src/core/prompts/agents.py` with abstracted prompt
 - [ ] Update `turtleapp/api/main.py` with MCP cleanup lifecycle
-- [ ] Test tools load: `poetry run python -c "from turtleapp.src.core.mcp.tools import get_qbittorrent_tools; print(len(get_qbittorrent_tools()))"`
+- [ ] Test tools load: `uv run python -c "from turtleapp.src.core.mcp.tools import get_qbittorrent_tools; print(len(get_qbittorrent_tools()))"`
 
 #### Phase 3: Remove ALL Legacy/Redundant Code (1-2 hours)
 - [ ] **Delete files:**
@@ -1513,13 +1551,13 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 - [ ] Create `test_agent_mcp.py`
 - [ ] Create `test_graph_mcp.py`
 - [ ] Start MCP HTTP server: `cd packages/qbittorrent-mcp && uv run fastmcp run mcp_qbittorrent.server:mcp --transport http`
-- [ ] Run unit tests: `poetry run pytest -m "not expensive" -v`
-- [ ] Run integration tests: `poetry run pytest -m expensive -v`
+- [ ] Run unit tests: `uv run pytest -m "not expensive" -v`
+- [ ] Run integration tests: `uv run pytest -m expensive -v`
 - [ ] Test API endpoints: `curl -X POST http://localhost:8000/chat -d '{"message":"search for ubuntu"}'`
 
 #### Phase 5: Docker (2-3 hours)
 - [ ] Update `build/docker-compose.yml` with separate MCP container
-- [ ] Update `build/Dockerfile` (remove uv, no MCP server code)
+- [ ] Update `build/Dockerfile` (use uv, no Poetry, no MCP server code)
 - [ ] Test Docker build: `cd build && docker-compose build`
 - [ ] Test Docker run: `docker-compose up -d`
 - [ ] Test MCP server health: `curl http://localhost:8001/mcp/tools`
@@ -1549,14 +1587,14 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 
 | Phase | Tasks | Estimated Time |
 |-------|-------|----------------|
-| 0 | Prerequisites & setup | 1 hour |
+| 0 | Prerequisites & setup (including uv conversion) | 1-2 hours |
 | 1 | MCP server HTTP setup | 2-3 hours |
 | 2 | LangGraph integration (HTTP) | 3-4 hours |
-| 3 | Remove legacy code | 1 hour |
+| 3 | Remove ALL legacy/redundant code | 1-2 hours |
 | 4 | Testing | 4-5 hours |
-| 5 | Docker & deployment | 2-3 hours |
+| 5 | Docker & deployment (with uv) | 2-3 hours |
 | 6 | Documentation | 1-2 hours |
-| **Total** | | **14-19 hours** |
+| **Total** | | **14-21 hours** |
 
 ---
 
