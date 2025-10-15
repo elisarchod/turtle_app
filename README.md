@@ -32,17 +32,22 @@ graph LR
     subgraph Agents
         direction TB
         MovieRetriever["🎬 Movie Retriever"]
-        TorrentManager["⬬ Torrent Manager"]
+        DownloadManager["⬇️ Download Manager"]
         LibraryManager["📁 Library Manager"]
     end
-    
+
+    subgraph MCP["MCP Layer"]
+        direction TB
+        MCPServer["🔌 MCP Server<br/>(HTTP Transport)"]
+    end
+
     subgraph ExternalSystems["External Systems & Data"]
         direction TB
         PineconeDB["🗄️ Pinecone DB"]
-        QBittorrent["🌀 qBittorrent"]
+        QBittorrent["🌀 qBittorrent<br/>Web API"]
         NetworkShare["📚 Local Network Share"]
     end
-    
+
     subgraph BackendServices["Backend & Data Sources"]
         direction TB
         LLM["🧠 Claude 3.5 (Anthropic)"]
@@ -52,13 +57,14 @@ graph LR
 
     %% Define Flow
     User --> Supervisor --> Agents
-    
+
     Agents -- "LLM Calls" --> LLM
-    
+
     MovieRetriever --> PineconeDB
-    TorrentManager --> QBittorrent
+    DownloadManager -- "MCP Tools" --> MCPServer
+    MCPServer -- "HTTP API" --> QBittorrent
     LibraryManager --> NetworkShare
-    
+
     CMUCorpus -- "Ingest" --> Embeddings --> PineconeDB
 
 ```
