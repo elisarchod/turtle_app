@@ -1,10 +1,25 @@
 """MCP tools loader using LangGraph native MCP support (HTTP transport)."""
 
 import asyncio
-from typing import Optional
-from langchain_mcp.client import MultiServerMCPClient
+from typing import Optional, Dict, Any
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
-from turtleapp.src.core.mcp.config import get_qbittorrent_mcp_config
+from turtleapp.settings import settings
+
+
+def _get_qbittorrent_mcp_config() -> Dict[str, Any]:
+    """Build MCP client config from settings.
+
+    Returns configuration for HTTP-based MCP server running in separate
+    Docker container. LangGraph's MultiServerMCPClient handles the
+    connection lifecycle and protocol via streamable_http transport.
+    """
+    return {
+        "qbittorrent": {
+            "url": settings.mcp.qbittorrent_url,
+            "transport": "streamable_http",
+        }
+    }
 
 
 class MCPClientManager:
@@ -17,7 +32,7 @@ class MCPClientManager:
     async def get_client(self) -> MultiServerMCPClient:
         """Get or create MCP client connection."""
         if not self._initialized:
-            config = get_qbittorrent_mcp_config()
+            config = _get_qbittorrent_mcp_config()
             self._client = MultiServerMCPClient(config)
             await self._client.__aenter__()
             self._initialized = True
