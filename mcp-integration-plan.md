@@ -782,65 +782,55 @@ app.include_router(router)
 
 ---
 
-#### 2.6 Update Agent Prompt (Keep Tool Names Abstract)
+#### 2.6 Remove Specialized Torrent Agent Prompt
+
+**Rationale**: With MCP, tool descriptions fully document agent behavior. No need for domain-specific prompt guidance.
 
 **File: `turtleapp/src/core/prompts/agents.py`**
 
-**IMPORTANT**: Do NOT mention qBittorrent or technical tool names in prompts. Let the MCP tool descriptions handle the details. The LLM should only know about movie download concepts:
+Remove the `TORRENT_MANAGER_PROMPT` entirely:
 
 ```python
-TORRENT_MANAGER_PROMPT = PromptTemplate.from_template("""
-You are a movie download management expert specializing in movie file acquisition.
+# DELETE THIS ENTIRE SECTION (lines 63-101):
+# TORRENT_MANAGER_TEMPLATE = """..."""
+# TORRENT_MANAGER_PROMPT = PromptTemplate(...)
+```
 
-Your capabilities:
-- Search across multiple movie sources and repositories
-- Monitor download progress and status
-- Manage download queue and operations
-- Handle download troubleshooting
+**File: `turtleapp/src/core/nodes/agents.py`**
 
-**Available Tools:** {tools}
+Update torrent agent to use default `AGENT_BASE_PROMPT`:
 
-**Tool Usage Guidelines:**
-- The tools provided handle all download operations automatically
-- Search for movies by title and year for best results
-- Check download status before searching for duplicates
-- Use appropriate filters when checking download status
-- Provide clear, user-friendly responses to users
+```python
+# BEFORE:
+from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_MANAGER_PROMPT
+...
+torrent_agent = ToolAgent(
+    [get_torrent_search_tool(), ...],
+    name="movies_download_manager",
+    specialized_prompt=TORRENT_MANAGER_PROMPT  # REMOVE THIS
+)
 
-**Task:** {input}
-
-**Approach:**
-1. Determine if user wants to search for new movies or check existing downloads
-2. For searches: extract movie title and year if provided
-3. For status checks: get current download information with appropriate filter
-4. For managing downloads: identify the specific download and action needed
-5. Provide clear, actionable information
-
-**Important:**
-- Let the tools handle the technical details (you don't need to know implementation)
-- Focus on user intent: search, status, add, or control operations
-- Avoid technical jargon in responses - speak in terms of "movies" and "downloads"
-- Return control to supervisor after completing your task
-
-Use this format:
-Thought: What do I need to do?
-Action: {tool_names}
-Action Input: the input for the action
-Observation: the result of the action
-Thought: What's the result and what should I do next?
-Final Answer: Complete response for the user
-
-Begin!
-{agent_scratchpad}
-""")
+# AFTER:
+from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT  # Removed TORRENT_MANAGER_PROMPT
+...
+torrent_agent = ToolAgent(
+    [
+        get_torrent_search_tool(),      # qb_search_torrents (from HTTP MCP)
+        get_torrent_status_tool(),      # qb_list_torrents (from HTTP MCP)
+        get_torrent_add_tool(),         # qb_add_torrent (from HTTP MCP)
+        get_torrent_control_tool()      # qb_control_torrent (from HTTP MCP)
+    ],
+    name="movies_download_manager"
+    # No specialized_prompt - uses AGENT_BASE_PROMPT default
+)
 ```
 
 **Key Design Decisions:**
-- ❌ **Don't list specific tool names** (`qb_search_torrents`, etc.) - LangChain provides this via `{tools}` variable
-- ❌ **Don't mention qBittorrent** - Keep abstraction at "movie download manager" level
-- ✅ **Rely on MCP tool descriptions** - They already have good descriptions for the LLM
-- ✅ **Focus on user intent** - Search, status, add, control are the concepts LLM needs
-- ✅ **Keep existing user-friendly language** - "downloads" not "torrents", "movie files" not "magnet links"
+- ✅ **MCP tool descriptions are self-documenting** - No need for additional prompt guidance
+- ✅ **Pure abstraction** - Agent behavior driven entirely by tool descriptions, not hardcoded prompts
+- ✅ **ReAct structure preserved** - `AGENT_BASE_PROMPT` still provides "Thought/Action/Observation" structure needed by `create_react_agent()`
+- ✅ **Easy to swap implementations** - Change MCP server, agent behavior updates automatically
+- ✅ **Less maintenance** - One less prompt to keep in sync with tool changes
 
 ---
 
