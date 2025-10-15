@@ -425,52 +425,32 @@ from turtleapp.src.core.mcp.config import get_qbittorrent_mcp_config
 
 # Global MCP client (initialized once at startup)
 _mcp_client: MultiServerMCPClient = None
-_mcp_tools_cache = None
 
 
-async def _initialize_mcp_client() -> MultiServerMCPClient:
-    """Initialize MCP client connection to remote HTTP server.
+async def _get_mcp_client() -> MultiServerMCPClient:
+    """Get or create MCP client connection.
 
     Returns:
         Initialized MultiServerMCPClient instance
     """
-    config = get_qbittorrent_mcp_config()
-
-    # LangGraph native MCP client - handles all HTTP/protocol details
-    client = MultiServerMCPClient(config)
-
-    # Initialize connection (required before get_tools)
-    await client.__aenter__()
-
-    return client
-
-
-async def _load_mcp_tools():
-    """Load tools from qBittorrent MCP server via HTTP.
-
-    Returns:
-        List of tools ready to use with agents (no BaseTool import needed!)
-    """
     global _mcp_client
 
     if _mcp_client is None:
-        _mcp_client = await _initialize_mcp_client()
+        config = get_qbittorrent_mcp_config()
+        _mcp_client = MultiServerMCPClient(config)
+        # Initialize connection (required before get_tools)
+        await _mcp_client.__aenter__()
 
-    # get_tools() returns tools ready to use - no conversion needed!
-    tools = await _mcp_client.get_tools()
-
-    return tools
+    return _mcp_client
 
 
 def get_qbittorrent_tools():
-    """Get all tools from qBittorrent MCP server (cached)."""
-    global _mcp_tools_cache
+    """Get all tools from qBittorrent MCP server.
 
-    if _mcp_tools_cache is None:
-        # Load tools once at startup
-        _mcp_tools_cache = asyncio.run(_load_mcp_tools())
-
-    return _mcp_tools_cache
+    Tools are loaded once and cached by the MCP client itself.
+    """
+    client = asyncio.run(_get_mcp_client())
+    return asyncio.run(client.get_tools())
 
 
 # Cleanup handler for graceful shutdown
