@@ -311,8 +311,14 @@ docker-compose up -d
 
 **🎉 That's it!** Your services are now running:
 - **Turtle App API**: http://localhost:8000
+- **MCP qBittorrent Server**: http://localhost:8001 (HTTP MCP endpoint)
 - **qBittorrent Web UI**: http://localhost:15080 (admin/adminadmin)
-- **Samba Share**: Available on network ports 139/445
+- **Samba Share**: Available on network ports 1139/1445
+
+**Build Structure:**
+- Single `build/docker-compose.yml` for all services (main app, MCP server, qBittorrent, Samba)
+- Single `build/Dockerfile_api` for the Turtle App container
+- MCP server builds from `mcp-servers/qbittorrent-mcp/Dockerfile`
 
 #### Step 4: Test the API
 ```bash
@@ -327,14 +333,22 @@ curl "http://localhost:8000/health"
 
 #### Managing Services
 ```bash
-# View logs
+# View logs (all services)
 docker-compose logs -f
+
+# View logs (specific service)
+docker-compose logs -f turtle-app-api
+docker-compose logs -f mcp-qbittorrent
 
 # Stop all services
 docker-compose down
 
-# Restart services
-docker-compose restart
+# Restart specific service
+docker-compose restart turtle-app-api
+docker-compose restart mcp-qbittorrent
+
+# Rebuild after code changes
+docker-compose up -d --build
 ```
 
 ### Option 2: Local Development
@@ -380,15 +394,19 @@ QBITTORRENT_HOST=http://localhost:15080
 SAMBA_SERVER=localhost
 SAMBA_SHARE_PATH=daves
 
+# MCP Server Configuration (HTTP transport)
+TURTLEAPP_MCP_QBITTORRENT_URL=http://mcp-qbittorrent:8000/mcp
+
 # Docker volume paths
 HDD_PATH=./downloads
 STACK_PATH=./volumes
 ```
 
 **Services Created:**
+- **Turtle App API**: `http://localhost:8000`
+- **MCP qBittorrent Server**: `http://localhost:8001/mcp` (HTTP MCP endpoint)
 - **qBittorrent**: `http://localhost:15080` (admin/adminadmin)
 - **Samba**: Network share `\\localhost\daves` (dave/password)
-- **Turtle App API**: `http://localhost:8000`
 
 #### External Deployment
 For external qBittorrent/Samba servers, see `.env.external` example:
