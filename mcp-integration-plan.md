@@ -61,11 +61,9 @@ Docker Container 3: qBittorrent
 
 ## Architecture Considerations
 
-### Transport Options: stdio vs HTTP
+### Transport: HTTP (streamable_http)
 
-The MCP protocol supports multiple transport mechanisms. This plan uses **HTTP transport** for Docker deployments, but other options exist:
-
-#### Option 1: HTTP Transport (streamable_http) - **CHOSEN**
+The MCP protocol supports multiple transport mechanisms. This plan uses **HTTP transport** for Docker container communication:
 
 **Configuration:**
 ```python
@@ -86,145 +84,21 @@ The MCP protocol supports multiple transport mechanisms. This plan uses **HTTP t
 - ✅ Can expose MCP server to external consumers (other apps, CLI tools)
 
 **Cons:**
-- ❌ Slightly higher latency than stdio (network overhead)
 - ❌ Requires network configuration in Docker Compose
 - ❌ More moving parts (HTTP server, network stack)
 
-**When to use:**
-- Separate Docker containers (production deployments)
-- Microservices architecture
-- Need to share MCP server across multiple apps
-- Cloud deployments (Kubernetes, ECS, etc.)
-
 ---
 
-#### Option 2: stdio Transport (subprocess)
+### Deployment Architecture
 
-**Configuration:**
-```python
-{
-    "qbittorrent": {
-        "command": "uv",
-        "args": ["run", "mcp-qbittorrent"],
-        "transport": "stdio"
-    }
-}
-```
+This plan uses **separate Docker containers** with HTTP communication:
 
-**Pros:**
-- ✅ Lower latency (direct process communication)
-- ✅ Simpler configuration (no network setup)
-- ✅ Automatic lifecycle management (subprocess started/stopped with app)
-- ✅ No HTTP server overhead
-
-**Cons:**
-- ❌ Cannot work across Docker container boundaries
-- ❌ Requires both apps in same container or same filesystem
-- ❌ MCP server coupled to main app lifecycle
-- ❌ Cannot share MCP server across multiple clients
-
-**When to use:**
-- Single-container deployments
-- Local development
-- CLI tools
-- Desktop applications
-
----
-
-#### Option 3: SSE Transport (Server-Sent Events)
-
-**Configuration:**
-```python
-{
-    "qbittorrent": {
-        "url": "http://mcp-qbittorrent:8000/sse",
-        "transport": "sse"
-    }
-}
-```
-
-**Pros:**
-- ✅ Works across containers like HTTP
-- ✅ Supports streaming responses
-- ✅ Better for real-time updates
-
-**Cons:**
-- ❌ Less common than HTTP (fewer tools support it)
-- ❌ Similar overhead to HTTP
-- ❌ Not all MCP servers support SSE
-
-**When to use:**
-- Need real-time streaming updates from MCP server
-- Long-running operations with progress updates
-
----
-
-### Deployment Topology Alternatives
-
-#### Alternative A: Single Container (stdio transport)
-
-If you want to simplify deployment at the cost of modularity:
-
-```
-Docker Container: Turtle App + MCP Server
-┌────────────────────────────────────────┐
-│  FastAPI + LangGraph                   │
-│        ↓ stdio                          │
-│  MCP Server (subprocess)                │
-│        ↓ HTTP                           │
-│  qBittorrent (separate container)      │
-└────────────────────────────────────────┘
-```
-
-**Trade-offs:**
-- ✅ Simpler Docker setup (one less container)
-- ✅ Lower latency (stdio is faster than HTTP)
-- ✅ Fewer network dependencies
-- ❌ MCP server cannot be shared/reused
-- ❌ Harder to scale MCP server independently
-- ❌ Tighter coupling between app and MCP server
-
-**Implementation changes:**
-- Use `stdio` transport in Phase 2.2
-- No separate MCP container in docker-compose
-- MCP server packaged inside main app container
-
----
-
-#### Alternative B: Separate HTTP Container (streamable_http transport) - **CHOSEN**
-
-The plan as written uses this approach.
-
-**Trade-offs:**
+**Benefits:**
 - ✅ Maximum modularity and reusability
 - ✅ Can scale MCP server independently
 - ✅ Clear separation of concerns
 - ✅ MCP server can serve multiple clients
-- ❌ More complex Docker setup
-- ❌ Slightly higher latency (network hop)
-- ❌ More containers to manage
-
----
-
-#### Alternative C: Sidecar Pattern
-
-Run MCP server as a sidecar container in the same pod (Kubernetes):
-
-```
-Pod:
-┌─────────────────────────────────────┐
-│  Container 1: Turtle App            │
-│       ↓ localhost:8000               │
-│  Container 2: MCP Server (sidecar)  │
-└─────────────────────────────────────┘
-```
-
-**Trade-offs:**
-- ✅ Low latency (localhost communication)
-- ✅ MCP server lifecycle tied to app
-- ✅ Simplifies network security (no external exposure)
-- ❌ Only works in Kubernetes
-- ❌ Cannot share MCP server across pods
+- ✅ Standard HTTP debugging (curl, logs)
 
 ---
 
@@ -243,42 +117,12 @@ async def qb_search_torrents(query: str, limit: int = 10):
     # implementation
 ```
 
-**Pros:**
+**Why FastMCP:**
 - ✅ Quick development - minimal boilerplate
 - ✅ Automatic HTTP server setup
 - ✅ Built-in validation and error handling
-- ✅ Supports both stdio and HTTP transports
-
-**Cons:**
-- ❌ Less control over HTTP layer
-- ❌ Opinionated framework choices
-
----
-
-#### Custom MCP Server (Official SDK)
-
-```python
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-
-server = Server("qbittorrent-server")
-
-@server.list_tools()
-async def list_tools():
-    return [...]
-```
-
-**Pros:**
-- ✅ Maximum flexibility
-- ✅ Official SDK - guaranteed compatibility
-- ✅ More control over protocol details
-
-**Cons:**
-- ❌ More boilerplate code
-- ❌ Slower development
-- ❌ Need to implement HTTP layer manually
-
-**Recommendation:** Use FastMCP for this project. The existing `mcp-qbittorrent` server already uses FastMCP, and it's sufficient for our needs.
+- ✅ Already used by existing `mcp-qbittorrent` server
+- ✅ Sufficient for our needs
 
 ---
 
@@ -834,93 +678,231 @@ torrent_agent = ToolAgent(
 
 ---
 
-### Phase 3: Remove Legacy Code
+### Phase 3: Remove ALL Legacy/Redundant Code
 
-**Duration: 1 hour**
+**Duration: 1-2 hours**
 
-#### 3.1 Delete Legacy Torrent Tools
+This phase completely removes all qBittorrent-related code from the main app. After this phase, the main app will be **completely agnostic** to qBittorrent - it only knows about MCP tools via HTTP.
+
+---
+
+#### 3.1 Delete Legacy Torrent Tools File
 
 **File: `turtleapp/src/core/tools/torrent_tools.py`** - **DELETE ENTIRELY**
 
 ```bash
-# Remove the file completely
 rm turtleapp/src/core/tools/torrent_tools.py
 ```
 
-**What to remove:**
+**What gets deleted:**
 - ❌ `api_call()` function - replaced by MCP server's qBittorrent client
 - ❌ `get_torrents()` function - replaced by `qb_list_torrents` MCP tool
 - ❌ `search_torrents()` function - replaced by `qb_search_torrents` MCP tool
 - ❌ `TorrentDownloadsTool` class - replaced by `qb_list_torrents` MCP tool
 - ❌ `TorrentSearchTool` class - replaced by `qb_search_torrents` MCP tool
 - ❌ All direct HTTP calls to qBittorrent API
+- ❌ All qBittorrent-specific logic
 
-**Rationale:**
-- No need for deprecation warnings - clean break
+**Why delete completely:**
+- No deprecation warnings needed - clean break
 - MCP provides all functionality (and more)
 - Keeping old code creates confusion and maintenance burden
 - No backward compatibility needed (internal implementation detail)
 
-#### 3.2 Update Tools Module Exports
+---
+
+#### 3.2 Delete Legacy Torrent Tests
+
+**File: `turtleapp/tests/test_torrent.py`** - **DELETE ENTIRELY**
+
+```bash
+rm turtleapp/tests/test_torrent.py
+```
+
+**What gets deleted:**
+- ❌ Tests for `get_torrents()` function
+- ❌ Tests for `TorrentDownloadsTool` class
+- ❌ Tests for `TorrentSearchTool` class
+- ❌ Mock tests for qBittorrent API calls
+
+**Replacement:**
+- New tests in Phase 4 will test MCP integration instead
+- `test_mcp_integration.py` - tests MCP tools load from HTTP server
+- `test_agent_mcp.py` - tests agent uses MCP tools correctly
+
+---
+
+#### 3.3 Remove TORRENT_MANAGER_PROMPT
+
+**File: `turtleapp/src/core/prompts/agents.py`**
+
+Delete the entire torrent manager prompt section (lines 63-101):
+
+```python
+# DELETE THESE LINES:
+# TORRENT_MANAGER_TEMPLATE = """You are a movie download management expert..."""
+# TORRENT_MANAGER_PROMPT = PromptTemplate(
+#     template=TORRENT_MANAGER_TEMPLATE,
+#     input_variables=[...]
+# )
+```
+
+**Keep:**
+- ✅ `AGENT_BASE_PROMPT` - still used as default
+- ✅ `MOVIE_RETRIEVER_PROMPT` - still used by movie retriever agent
+
+---
+
+#### 3.4 Update Prompts Module Exports
+
+**File: `turtleapp/src/core/prompts/__init__.py`**
+
+Remove `TORRENT_MANAGER_PROMPT` from imports and exports:
+
+```python
+# BEFORE:
+from .agents import (
+    AGENT_BASE_PROMPT,
+    MOVIE_RETRIEVER_PROMPT,
+    TORRENT_MANAGER_PROMPT  # DELETE THIS LINE
+)
+
+__all__ = [
+    "SUPERVISOR_PROMPT",
+    "AGENT_BASE_PROMPT",
+    "MOVIE_RETRIEVER_PROMPT",
+    "TORRENT_MANAGER_PROMPT"  # DELETE THIS LINE
+]
+
+# AFTER:
+from .agents import (
+    AGENT_BASE_PROMPT,
+    MOVIE_RETRIEVER_PROMPT
+)
+
+__all__ = [
+    "SUPERVISOR_PROMPT",
+    "AGENT_BASE_PROMPT",
+    "MOVIE_RETRIEVER_PROMPT"
+]
+```
+
+---
+
+#### 3.5 Update Tools Module Exports
 
 **File: `turtleapp/src/core/tools/__init__.py`**
 
 Remove torrent tool exports:
 
 ```python
-"""Tool exports for turtle app agents."""
+# BEFORE:
+from turtleapp.src.core.tools.torrent_tools import (
+    torrent_search_tool,
+    torrent_download_tool
+)
 
-# Existing tools (keep)
-from turtleapp.src.core.tools.movie_summaries_retriever import movie_retriever_tool
-from turtleapp.src.core.tools.library_manager import library_manager_tool
-
-# REMOVED: torrent tool exports
-# from turtleapp.src.core.tools.torrent_tools import (
-#     torrent_search_tool,
-#     torrent_download_tool
-# )
-
-# Export only non-MCP tools
 __all__ = [
     "movie_retriever_tool",
     "library_manager_tool",
+    "torrent_search_tool",      # DELETE
+    "torrent_download_tool"     # DELETE
+]
+
+# AFTER:
+# Only non-MCP tools - MCP tools loaded separately
+from turtleapp.src.core.tools.movie_summaries_retriever import movie_retriever_tool
+from turtleapp.src.core.tools.library_manager import library_manager_tool
+
+__all__ = [
+    "movie_retriever_tool",
+    "library_manager_tool"
 ]
 ```
 
-#### 3.3 Simplify Settings - Remove qBittorrent Config
+---
+
+#### 3.6 Remove QBittorrentSettings from Settings
 
 **File: `turtleapp/settings.py`**
 
-Remove qBittorrent settings entirely - MCP server has its own config:
+Delete `QBittorrentSettings` class entirely and replace with `MCPSettings`:
 
 ```python
-# BEFORE: (DELETE THIS)
-# class QBittorrentSettings(BaseModel):
-#     host: str
-#     credentials: dict
+# DELETE THIS ENTIRE CLASS (lines 66-79):
+# class QBittorrentSettings(BaseAppSettings):
+#     host: Optional[str] = ...
+#     username: Optional[str] = ...
+#     password: Optional[str] = ...
+#     @property
+#     def credentials(self) -> dict[str, str]:
+#         ...
 
-# NEW: Only MCP config needed
-class MCPSettings(BaseModel):
-    """MCP server configuration (HTTP-based)."""
-    qbittorrent_url: str = "http://mcp-qbittorrent:8000/mcp"
+# ADD THIS NEW CLASS:
+class MCPSettings(BaseAppSettings):
+    """MCP server configuration (HTTP transport)."""
+    qbittorrent_url: str = Field(
+        alias="TURTLEAPP_MCP_QBITTORRENT_URL",
+        default="http://mcp-qbittorrent:8000/mcp",
+        description="HTTP URL for qBittorrent MCP server"
+    )
 
-class Settings(BaseSettings):
-    # Existing settings
-    pinecone: PineconeSettings
-    openai: OpenAISettings
-    models: ModelSettings
+# UPDATE Settings class:
+class Settings(BaseAppSettings):
+    # ... existing fields ...
 
-    # NEW: MCP configuration
-    mcp: MCPSettings = MCPSettings()
+    # REMOVE THIS:
+    # qbittorrent: QBittorrentSettings = Field(default_factory=QBittorrentSettings)
 
-    # REMOVED: qbittorrent settings (now in MCP server's .env)
-    # qbittorrent: QBittorrentSettings  # DELETE THIS
+    # ADD THIS:
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
 ```
 
 **Rationale:**
 - qBittorrent credentials belong in MCP server's environment, not main app
-- Main app only needs to know the HTTP URL of MCP server
+- Main app only needs HTTP URL to MCP server
 - Cleaner separation of concerns
+- Main app becomes agnostic to qBittorrent implementation
+
+---
+
+#### 3.7 Verify No Remaining qBittorrent References
+
+After deletions, verify no qBittorrent imports or usage remains in main app:
+
+```bash
+# Search for any remaining qBittorrent references
+cd turtleapp
+grep -r "qbittorrent" --include="*.py" src/ api/ | grep -v "mcp" | grep -v "MCP"
+# Should return NO results (except in comments)
+
+# Search for torrent_tools imports
+grep -r "from.*torrent_tools import" --include="*.py" .
+# Should return NO results
+
+# Search for TorrentDownloadsTool or TorrentSearchTool
+grep -r "TorrentDownloadsTool\|TorrentSearchTool" --include="*.py" .
+# Should return NO results
+```
+
+**Expected result:** No matches (main app is now qBittorrent-agnostic)
+
+---
+
+#### 3.8 Summary of Deleted Files
+
+**Complete list of files to delete:**
+1. ❌ `turtleapp/src/core/tools/torrent_tools.py` - Legacy tool implementations
+2. ❌ `turtleapp/tests/test_torrent.py` - Legacy tool tests
+
+**Complete list of code sections to delete:**
+1. ❌ `turtleapp/src/core/prompts/agents.py` - `TORRENT_MANAGER_PROMPT` (lines 63-101)
+2. ❌ `turtleapp/src/core/prompts/__init__.py` - `TORRENT_MANAGER_PROMPT` import/export
+3. ❌ `turtleapp/src/core/tools/__init__.py` - torrent tool imports/exports
+4. ❌ `turtleapp/settings.py` - `QBittorrentSettings` class (lines 66-79)
+5. ❌ `turtleapp/settings.py` - `qbittorrent: QBittorrentSettings` field in `Settings` class
+
+**Total lines removed:** ~300-400 lines of legacy code
 
 #### 3.4 Update Environment Variables
 
@@ -1358,9 +1340,9 @@ The **download manager agent** uses these MCP tools (implementation: qBittorrent
 
 **Note**: The LLM prompt never mentions "qBittorrent" or "torrent" - it operates at the abstraction level of "movie downloads" and "download management". The MCP tools handle implementation details transparently.
 
-### Transport: HTTP vs stdio
+### Transport: HTTP (streamable_http)
 
-This implementation uses **HTTP transport** (`streamable_http`) for MCP communication:
+This implementation uses **HTTP transport** for MCP communication:
 
 **Benefits:**
 - ✅ Works across Docker container boundaries
@@ -1368,12 +1350,6 @@ This implementation uses **HTTP transport** (`streamable_http`) for MCP communic
 - ✅ Standard HTTP debugging tools (curl, Postman)
 - ✅ Can add authentication/authorization later
 - ✅ Multiple clients can use same MCP server
-
-**Trade-offs:**
-- ❌ Slightly higher latency than stdio (network overhead)
-- ❌ More complex Docker setup (separate container)
-
-**Alternative**: For single-container deployments, use `stdio` transport (subprocess model). See `mcp-integration-plan.md` for details.
 
 ### Adding New MCP Tools
 
@@ -1510,13 +1486,27 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 - [ ] Update `turtleapp/api/main.py` with MCP cleanup lifecycle
 - [ ] Test tools load: `poetry run python -c "from turtleapp.src.core.mcp.tools import get_qbittorrent_tools; print(len(get_qbittorrent_tools()))"`
 
-#### Phase 3: Remove Legacy Code (1 hour)
-- [ ] Delete `turtleapp/src/core/tools/torrent_tools.py` entirely
-- [ ] Remove torrent tool exports from `turtleapp/src/core/tools/__init__.py`
-- [ ] Remove `QBittorrentSettings` from `turtleapp/settings.py`
-- [ ] Add `MCPSettings` to `turtleapp/settings.py`
-- [ ] Update `.env.example` with HTTP transport env vars
-- [ ] Update local `.env` with new env var names
+#### Phase 3: Remove ALL Legacy/Redundant Code (1-2 hours)
+- [ ] **Delete files:**
+  - [ ] Delete `turtleapp/src/core/tools/torrent_tools.py` entirely
+  - [ ] Delete `turtleapp/tests/test_torrent.py` entirely
+- [ ] **Update prompts:**
+  - [ ] Delete `TORRENT_MANAGER_PROMPT` from `turtleapp/src/core/prompts/agents.py` (lines 63-101)
+  - [ ] Remove `TORRENT_MANAGER_PROMPT` import/export from `turtleapp/src/core/prompts/__init__.py`
+- [ ] **Update tools:**
+  - [ ] Remove torrent tool imports from `turtleapp/src/core/tools/__init__.py`
+  - [ ] Remove torrent tool exports from `__all__` in `turtleapp/src/core/tools/__init__.py`
+- [ ] **Update settings:**
+  - [ ] Delete `QBittorrentSettings` class from `turtleapp/settings.py` (lines 66-79)
+  - [ ] Add `MCPSettings` class to `turtleapp/settings.py`
+  - [ ] Replace `qbittorrent: QBittorrentSettings` with `mcp: MCPSettings` in `Settings` class
+- [ ] **Verify cleanup:**
+  - [ ] Run grep to verify no qBittorrent references remain in main app
+  - [ ] Run grep to verify no torrent_tools imports remain
+  - [ ] Verify ~300-400 lines of code deleted
+- [ ] **Update environment variables:**
+  - [ ] Update `.env.example` with MCP HTTP transport env vars
+  - [ ] Update local `.env` with new env var names
 
 #### Phase 4: Testing (4-5 hours)
 - [ ] Create `test_mcp_integration.py` with HTTP tests
@@ -1539,7 +1529,7 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 #### Phase 6: Documentation (1-2 hours)
 - [ ] Update CLAUDE.md with MCP HTTP architecture
 - [ ] Update README.md with HTTP transport details
-- [ ] Document alternative deployments (stdio vs HTTP)
+- [ ] Document HTTP transport architecture
 - [ ] Create migration notes
 - [ ] Document rollback procedure
 
@@ -1612,20 +1602,31 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 
 ## Success Criteria
 
+### Functional Requirements
 - [ ] All existing API endpoints work unchanged
 - [ ] All tests pass (unit + integration)
-- [ ] **No `torrent_tools.py` file exists** - completely removed
-- [ ] **No `QBittorrentSettings` in main app settings** - removed
-- [ ] **No direct qBittorrent HTTP calls anywhere** in main app code
-- [ ] **No qBittorrent imports** in main app (only MCP URL config)
-- [ ] MCP server can be tested independently via HTTP: `curl http://localhost:8001/mcp/tools`
 - [ ] Docker Compose deployment works with 3 containers (app, mcp, qbittorrent)
-- [ ] Documentation accurate and up-to-date
+- [ ] MCP server can be tested independently via HTTP: `curl http://localhost:8001/mcp/tools`
 - [ ] Performance within 10% of legacy implementation
 - [ ] No user-facing regressions
-- [ ] Code is simpler and more maintainable
+
+### Code Cleanup (Main App Must Be qBittorrent-Agnostic)
+- [ ] **No `torrent_tools.py` file exists** - completely removed
+- [ ] **No `test_torrent.py` file exists** - completely removed
+- [ ] **No `TORRENT_MANAGER_PROMPT` exists** - completely removed
+- [ ] **No `QBittorrentSettings` in main app settings** - replaced with `MCPSettings`
+- [ ] **No direct qBittorrent HTTP calls anywhere** in main app code
+- [ ] **No qBittorrent imports** in main app (only MCP URL config)
+- [ ] **No torrent_tools imports** anywhere in main app
+- [ ] **Grep verification passes** - no qBittorrent references in src/ or api/ (except MCP config)
+- [ ] **~300-400 lines of legacy code deleted**
+
+### Architecture Goals
 - [ ] **Main app is agnostic to download backend** - could swap qBittorrent for Transmission without touching agent code
 - [ ] **MCP server is reusable** - can be used by other apps via HTTP
+- [ ] **Code is simpler and more maintainable** - less code, clearer separation
+- [ ] **Agent uses MCP tool descriptions only** - no specialized prompts needed
+- [ ] Documentation accurate and up-to-date
 
 ---
 
@@ -1706,57 +1707,42 @@ After successful migration:
 
 ---
 
-## Appendix: Alternative Architectures
+## Appendix: Production Deployment Options
 
-### A. Single Container (stdio transport)
+### Kubernetes Deployment
 
-**Use case:** Simplified deployment, local development
-
-```yaml
-# docker-compose.yml (simplified)
-services:
-  qbittorrent:
-    # ... same as main plan ...
-
-  turtle-app:
-    build: .
-    environment:
-      - TURTLEAPP_QB_QBITTORRENT_URL=http://qbittorrent:15080
-      - TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
-      - TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
-    depends_on:
-      - qbittorrent
-    # No separate MCP container
-```
-
-**Code changes:**
-```python
-# turtleapp/src/core/mcp/config.py
-def get_qbittorrent_mcp_config() -> Dict[str, Any]:
-    return {
-        "qbittorrent": {
-            "command": "uv",
-            "args": ["run", "mcp-qbittorrent"],
-            "transport": "stdio",
-            "env": {
-                "TURTLEAPP_QB_QBITTORRENT_URL": os.getenv(...),
-                "TURTLEAPP_QB_QBITTORRENT_USERNAME": os.getenv(...),
-                "TURTLEAPP_QB_QBITTORRENT_PASSWORD": os.getenv(...),
-            }
-        }
-    }
-```
-
----
-
-### B. Kubernetes Sidecar
-
-**Use case:** Cloud-native deployment
+For cloud-native deployments, use separate Deployments:
 
 ```yaml
-# kubernetes/deployment.yaml
+# kubernetes/mcp-server-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
+metadata:
+  name: mcp-qbittorrent
+spec:
+  template:
+    spec:
+      containers:
+      - name: mcp-qbittorrent
+        image: mcp-qbittorrent:latest
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-qbittorrent
+spec:
+  selector:
+    app: mcp-qbittorrent
+  ports:
+  - port: 8000
+
+# kubernetes/turtle-app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turtle-app
 spec:
   template:
     spec:
@@ -1765,25 +1751,11 @@ spec:
         image: turtle-app:latest
         env:
         - name: TURTLEAPP_MCP_QBITTORRENT_URL
-          value: http://localhost:8000/mcp
-
-      - name: mcp-qbittorrent  # Sidecar
-        image: mcp-qbittorrent:latest
-        ports:
-        - containerPort: 8000
+          value: http://mcp-qbittorrent:8000/mcp
 ```
 
----
+### Scaling Considerations
 
-### C. Serverless (AWS Lambda + API Gateway)
-
-**Use case:** Serverless, event-driven
-
-- Main app: AWS Lambda function
-- MCP server: ECS Fargate container (long-running)
-- Communication: HTTP via API Gateway + VPC Link
-
-**Trade-offs:**
-- ✅ Auto-scaling, pay-per-use
-- ❌ Cold start latency
-- ❌ Complex network setup
+- **MCP server**: Can be horizontally scaled with load balancer
+- **Main app**: Stateless, can scale independently
+- **Communication**: HTTP allows standard cloud load balancing
