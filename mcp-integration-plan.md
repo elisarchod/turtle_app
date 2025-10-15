@@ -412,31 +412,24 @@ def get_qbittorrent_mcp_config() -> Dict[str, Any]:
 
 **File: `turtleapp/src/core/mcp/tools.py`** (NEW)
 
-This is the **ONLY** integration code needed - LangGraph does the rest!
+This is **incredibly simple** - just get tools from MCP client and pass to agent!
 
 ```python
 """MCP tools loader using LangGraph native MCP support (HTTP transport)."""
 
 import asyncio
-from typing import List
-from langchain_core.tools import BaseTool
 from langchain_mcp.client import MultiServerMCPClient
 
 from turtleapp.src.core.mcp.config import get_qbittorrent_mcp_config
 
 
-# Cache for MCP client and tools (loaded once at startup)
+# Global MCP client (initialized once at startup)
 _mcp_client: MultiServerMCPClient = None
-_mcp_tools_cache: List[BaseTool] = None
+_mcp_tools_cache = None
 
 
 async def _initialize_mcp_client() -> MultiServerMCPClient:
-    """Initialize MCP client connection to remote HTTP servers.
-
-    Uses LangGraph's MultiServerMCPClient to:
-    1. Connect to remote MCP server via HTTP (streamable_http transport)
-    2. Handle connection lifecycle and retries
-    3. Manage protocol communication over HTTP
+    """Initialize MCP client connection to remote HTTP server.
 
     Returns:
         Initialized MultiServerMCPClient instance
@@ -452,38 +445,28 @@ async def _initialize_mcp_client() -> MultiServerMCPClient:
     return client
 
 
-async def _load_mcp_tools() -> List[BaseTool]:
+async def _load_mcp_tools():
     """Load tools from qBittorrent MCP server via HTTP.
 
-    Uses LangGraph's native MCP client to:
-    1. Connect to remote HTTP MCP server
-    2. List available tools via MCP protocol over HTTP
-    3. Convert MCP tools to LangChain tools automatically
-
     Returns:
-        List of LangChain BaseTool instances wrapping MCP tools
+        List of tools ready to use with agents (no BaseTool import needed!)
     """
     global _mcp_client
 
-    # Initialize client if not already done
     if _mcp_client is None:
         _mcp_client = await _initialize_mcp_client()
 
-    # Get tools from MCP server (returns LangChain-compatible tools)
+    # get_tools() returns tools ready to use - no conversion needed!
     tools = await _mcp_client.get_tools()
 
     return tools
 
 
-def get_qbittorrent_tools() -> List[BaseTool]:
+def get_qbittorrent_tools():
     """Get qBittorrent MCP tools (cached, synchronous).
 
-    Loads tools once at module import time and caches them.
-    The MCP server HTTP connection is managed by MultiServerMCPClient
-    and reused across all tool invocations for performance.
-
     Returns:
-        List of LangChain tools for qBittorrent operations:
+        List of tools for qBittorrent operations:
         - qb_list_torrents: List/filter torrents
         - qb_torrent_info: Get detailed torrent info
         - qb_add_torrent: Add torrents by URL/magnet
@@ -494,7 +477,7 @@ def get_qbittorrent_tools() -> List[BaseTool]:
     global _mcp_tools_cache
 
     if _mcp_tools_cache is None:
-        # Load tools synchronously at module import
+        # Load tools once at startup
         _mcp_tools_cache = asyncio.run(_load_mcp_tools())
 
     return _mcp_tools_cache
@@ -507,44 +490,18 @@ async def cleanup_mcp_client():
     if _mcp_client is not None:
         await _mcp_client.__aexit__(None, None, None)
         _mcp_client = None
-
-
-# Convenience functions for individual tools
-def get_tool_by_name(tool_name: str) -> BaseTool:
-    """Get specific MCP tool by name."""
-    tools = get_qbittorrent_tools()
-    for tool in tools:
-        if tool.name == tool_name:
-            return tool
-    raise ValueError(f"Tool {tool_name} not found in MCP server")
-
-
-def get_torrent_search_tool() -> BaseTool:
-    """Get qb_search_torrents tool."""
-    return get_tool_by_name("qb_search_torrents")
-
-
-def get_torrent_status_tool() -> BaseTool:
-    """Get qb_list_torrents tool."""
-    return get_tool_by_name("qb_list_torrents")
-
-
-def get_torrent_add_tool() -> BaseTool:
-    """Get qb_add_torrent tool."""
-    return get_tool_by_name("qb_add_torrent")
-
-
-def get_torrent_control_tool() -> BaseTool:
-    """Get qb_control_torrent tool."""
-    return get_tool_by_name("qb_control_torrent")
 ```
 
 **Key Points:**
-- ✅ **Uses `MultiServerMCPClient`** - LangGraph's built-in HTTP MCP client
-- ✅ **No custom wrappers needed** - `.get_tools()` returns LangChain tools
-- ✅ **Connection pooling automatic** - Client reuses HTTP connections
-- ✅ **Works across Docker containers** - Pure HTTP, no subprocess needed
-- ✅ **Graceful cleanup** - `cleanup_mcp_client()` for app shutdown
+- ✅ **No `BaseTool` import needed** - `get_tools()` returns ready-to-use tools
+- ✅ **Simple caching** - Tools loaded once at startup
+- ✅ **Direct usage** - Pass tools straight to `ToolAgent`
+- ✅ **Clean shutdown** - `cleanup_mcp_client()` for app shutdown
+
+**Why it's so simple:**
+- `MultiServerMCPClient.get_tools()` returns tools that work directly with LangChain agents
+- No manual conversion or wrapping needed
+- LangGraph handles all the MCP protocol details
 
 ---
 
@@ -552,7 +509,7 @@ def get_torrent_control_tool() -> BaseTool:
 
 **File: `turtleapp/src/core/nodes/agents.py`**
 
-Replace torrent tool imports with MCP tools:
+Replace torrent tool imports with MCP tools - it's just one line!
 
 ```python
 """Specialized agents (UPDATED for MCP)."""
@@ -568,21 +525,12 @@ from langgraph.types import Command
 
 from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
-from turtleapp.src.core.prompts import (
-    AGENT_BASE_PROMPT,
-    MOVIE_RETRIEVER_PROMPT,
-    TORRENT_MANAGER_PROMPT
-)
+from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT
 from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool
 # REMOVED: from turtleapp.src.core.tools import torrent_download_tool, torrent_search_tool
 
-# NEW: Import MCP tools
-from turtleapp.src.core.mcp.tools import (
-    get_torrent_search_tool,
-    get_torrent_status_tool,
-    get_torrent_add_tool,
-    get_torrent_control_tool
-)
+# NEW: Import MCP tools loader
+from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
 
 
 # ... ToolAgent class unchanged ...
@@ -595,15 +543,11 @@ movie_retriever_agent = ToolAgent(
 )
 
 # Download manager - NOW USES MCP TOOLS (via HTTP)
+# Just pass the tools directly - no need to call individual getters!
 torrent_agent = ToolAgent(
-    [
-        get_torrent_search_tool(),      # qb_search_torrents (from HTTP MCP)
-        get_torrent_status_tool(),      # qb_list_torrents (from HTTP MCP)
-        get_torrent_add_tool(),         # qb_add_torrent (from HTTP MCP)
-        get_torrent_control_tool()      # qb_control_torrent (from HTTP MCP)
-    ],
-    name="movies_download_manager",
-    specialized_prompt=TORRENT_MANAGER_PROMPT
+    get_qbittorrent_tools(),  # Returns all MCP tools ready to use
+    name="movies_download_manager"
+    # No specialized_prompt - uses AGENT_BASE_PROMPT default
 )
 
 # Library manager - unchanged
@@ -611,10 +555,17 @@ torrent_agent = ToolAgent(
 ```
 
 **Changes:**
-- Remove imports of old `torrent_download_tool`, `torrent_search_tool`
-- Import MCP tool getters from `turtleapp.src.core.mcp.tools`
-- Update `torrent_agent` to use 4 MCP tools (from HTTP server) instead of 2 legacy tools
-- All other agents unchanged
+- ❌ Remove imports of `torrent_download_tool`, `torrent_search_tool`
+- ❌ Remove import of `TORRENT_MANAGER_PROMPT`
+- ✅ Import `get_qbittorrent_tools()` from MCP module
+- ✅ Pass `get_qbittorrent_tools()` directly to `ToolAgent` - returns all tools
+- ✅ No specialized prompt - agent uses tool descriptions from MCP server
+
+**Why it's simpler:**
+- One function call gets all tools
+- No need to manually pick individual tools
+- MCP server defines which tools are available
+- Tools are already in the right format for `ToolAgent`
 
 ---
 
@@ -671,34 +622,7 @@ Remove the `TORRENT_MANAGER_PROMPT` entirely:
 # TORRENT_MANAGER_PROMPT = PromptTemplate(...)
 ```
 
-**File: `turtleapp/src/core/nodes/agents.py`**
-
-Update torrent agent to use default `AGENT_BASE_PROMPT`:
-
-```python
-# BEFORE:
-from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_MANAGER_PROMPT
-...
-torrent_agent = ToolAgent(
-    [get_torrent_search_tool(), ...],
-    name="movies_download_manager",
-    specialized_prompt=TORRENT_MANAGER_PROMPT  # REMOVE THIS
-)
-
-# AFTER:
-from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT  # Removed TORRENT_MANAGER_PROMPT
-...
-torrent_agent = ToolAgent(
-    [
-        get_torrent_search_tool(),      # qb_search_torrents (from HTTP MCP)
-        get_torrent_status_tool(),      # qb_list_torrents (from HTTP MCP)
-        get_torrent_add_tool(),         # qb_add_torrent (from HTTP MCP)
-        get_torrent_control_tool()      # qb_control_torrent (from HTTP MCP)
-    ],
-    name="movies_download_manager"
-    # No specialized_prompt - uses AGENT_BASE_PROMPT default
-)
-```
+**Note**: Agent configuration already updated in Phase 2.4 - no changes needed to `agents.py` here.
 
 **Key Design Decisions:**
 - ✅ **MCP tool descriptions are self-documenting** - No need for additional prompt guidance
@@ -994,11 +918,7 @@ TURTLEAPP_QB_QBITTORRENT_PASSWORD=adminadmin
 """Test MCP integration with LangGraph (HTTP transport)."""
 
 import pytest
-from turtleapp.src.core.mcp.tools import (
-    get_qbittorrent_tools,
-    get_torrent_search_tool,
-    get_tool_by_name
-)
+from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
 
 
 def test_mcp_tools_load():
@@ -1009,24 +929,30 @@ def test_mcp_tools_load():
     assert all(tool.name.startswith("qb_") for tool in tools)
 
 
-def test_get_tool_by_name():
-    """Test individual tool retrieval."""
-    search_tool = get_tool_by_name("qb_search_torrents")
-    assert search_tool is not None
-    assert search_tool.name == "qb_search_torrents"
+def test_tool_names():
+    """Test all expected tool names are present."""
+    tools = get_qbittorrent_tools()
+    tool_names = [tool.name for tool in tools]
 
+    expected_tools = [
+        "qb_search_torrents",
+        "qb_list_torrents",
+        "qb_add_torrent",
+        "qb_control_torrent",
+        "qb_torrent_info",
+        "qb_get_preferences"
+    ]
 
-def test_tool_name_mapping():
-    """Test convenience functions return correct tools."""
-    search_tool = get_torrent_search_tool()
-    assert search_tool.name == "qb_search_torrents"
+    for expected in expected_tools:
+        assert expected in tool_names
 
 
 @pytest.mark.asyncio
 @pytest.mark.expensive  # Requires running MCP HTTP server
 async def test_mcp_search_tool_execution():
     """Test MCP search tool can execute over HTTP."""
-    search_tool = get_torrent_search_tool()
+    tools = get_qbittorrent_tools()
+    search_tool = next(t for t in tools if t.name == "qb_search_torrents")
 
     # Test search with legal content
     result = await search_tool.ainvoke({"query": "Ubuntu 22.04", "limit": 5})
@@ -1039,9 +965,9 @@ async def test_mcp_search_tool_execution():
 @pytest.mark.expensive
 async def test_mcp_list_tool_execution():
     """Test MCP list tool can execute over HTTP."""
-    from turtleapp.src.core.mcp.tools import get_torrent_status_tool
+    tools = get_qbittorrent_tools()
+    status_tool = next(t for t in tools if t.name == "qb_list_torrents")
 
-    status_tool = get_torrent_status_tool()
     result = await status_tool.ainvoke({"filter": "all"})
 
     assert "torrents" in result or "count" in result
