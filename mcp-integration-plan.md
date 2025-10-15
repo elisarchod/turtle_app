@@ -418,60 +418,65 @@ This is **incredibly simple** - just get tools from MCP client and pass to agent
 """MCP tools loader using LangGraph native MCP support (HTTP transport)."""
 
 import asyncio
+from typing import Optional
 from langchain_mcp.client import MultiServerMCPClient
 
 from turtleapp.src.core.mcp.config import get_qbittorrent_mcp_config
 
 
-# Global MCP client (initialized once at startup)
-_mcp_client: MultiServerMCPClient = None
+class MCPClientManager:
+    """Manages MCP client lifecycle and connection."""
+
+    def __init__(self):
+        self._client: Optional[MultiServerMCPClient] = None
+        self._initialized = False
+
+    async def get_client(self) -> MultiServerMCPClient:
+        """Get or create MCP client connection."""
+        if not self._initialized:
+            config = get_qbittorrent_mcp_config()
+            self._client = MultiServerMCPClient(config)
+            await self._client.__aenter__()
+            self._initialized = True
+
+        return self._client
+
+    async def cleanup(self):
+        """Cleanup MCP client connection."""
+        if self._client is not None:
+            await self._client.__aexit__(None, None, None)
+            self._client = None
+            self._initialized = False
 
 
-async def _get_mcp_client() -> MultiServerMCPClient:
-    """Get or create MCP client connection.
-
-    Returns:
-        Initialized MultiServerMCPClient instance
-    """
-    global _mcp_client
-
-    if _mcp_client is None:
-        config = get_qbittorrent_mcp_config()
-        _mcp_client = MultiServerMCPClient(config)
-        # Initialize connection (required before get_tools)
-        await _mcp_client.__aenter__()
-
-    return _mcp_client
+# Module-level singleton
+_manager = MCPClientManager()
 
 
 def get_qbittorrent_tools():
-    """Get all tools from qBittorrent MCP server.
-
-    Tools are loaded once and cached by the MCP client itself.
-    """
-    client = asyncio.run(_get_mcp_client())
+    """Get all tools from qBittorrent MCP server."""
+    client = asyncio.run(_manager.get_client())
     return asyncio.run(client.get_tools())
 
 
-# Cleanup handler for graceful shutdown
 async def cleanup_mcp_client():
     """Cleanup MCP client connection on app shutdown."""
-    global _mcp_client
-    if _mcp_client is not None:
-        await _mcp_client.__aexit__(None, None, None)
-        _mcp_client = None
+    await _manager.cleanup()
 ```
 
 **Key Points:**
 - ✅ **No `BaseTool` import needed** - `get_tools()` returns ready-to-use tools
-- ✅ **Simple caching** - Tools loaded once at startup
-- ✅ **Direct usage** - Pass tools straight to `ToolAgent`
-- ✅ **Clean shutdown** - `cleanup_mcp_client()` for app shutdown
+- ✅ **No globals** - Encapsulated in `MCPClientManager` class
+- ✅ **Clean architecture** - Singleton pattern for connection management
+- ✅ **Testable** - Can mock `MCPClientManager` in tests
+- ✅ **Thread-safe initialization** - Client initialized once per process
+- ✅ **Proper cleanup** - `cleanup_mcp_client()` for graceful shutdown
 
-**Why it's so simple:**
-- `MultiServerMCPClient.get_tools()` returns tools that work directly with LangChain agents
-- No manual conversion or wrapping needed
-- LangGraph handles all the MCP protocol details
+**Design Benefits:**
+- Encapsulation: Client state is private to the manager
+- Single Responsibility: Manager handles lifecycle, functions handle access
+- Easy to extend: Add more MCP servers by creating more managers
+- No global keyword needed anywhere
 
 ---
 
