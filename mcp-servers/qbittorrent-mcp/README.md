@@ -27,44 +27,6 @@ The server acts as a translator between AI assistants and qBittorrent:
 - **Client**: Handles communication with qBittorrent Web API
 - **Models**: Structured data formats for reliable AI parsing
 
-## Quick Start
-
-### Prerequisites
-- Docker & Docker Compose (for full stack deployment)
-- Python 3.11+ with uv (for local development)
-- qBittorrent with Web UI enabled
-
-### Option 1: Docker Compose (Recommended)
-
-This MCP server is part of the Turtle App stack. To run the complete system:
-
-```bash
-# From the main turtle_app directory
-cd build
-docker-compose up -d
-```
-
-The MCP server will be available at `http://localhost:8001/mcp` and automatically connects to qBittorrent.
-
-### Option 2: Standalone Development
-
-```bash
-# 1. Navigate to MCP server directory
-cd mcp-servers/qbittorrent-mcp
-
-# 2. Install dependencies
-uv sync
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env with your qBittorrent credentials:
-#   QB_MCP_QBITTORRENT_URL=http://localhost:15080
-#   QB_MCP_QBITTORRENT_USERNAME=admin
-#   QB_MCP_QBITTORRENT_PASSWORD=your_password
-
-# 4. Start the server (HTTP transport)
-uv run fastmcp run mcp_qbittorrent.server:mcp --transport http
-```
 
 ## Usage Examples
 
@@ -84,21 +46,6 @@ User: "What's my download speed limit?"
 → Shows current speed settings
 ```
 
-## Project Structure
-
-```
-mcp-servers/qbittorrent-mcp/
-├── Dockerfile                      # Container build
-├── src/mcp_qbittorrent/
-│   ├── server.py                   # FastMCP server entry point
-│   ├── config.py                   # Pydantic settings
-│   ├── clients/qbittorrent_client.py  # Async API client
-│   ├── models/schemas.py           # Pydantic response models
-│   └── tools/qbittorrent_tools.py  # 6 MCP tools
-└── tests/
-    ├── unit/                       # Unit tests with mocks
-    └── integration/                # Integration tests
-```
 
 **Deployment:**
 - Built and deployed via main `build/docker-compose.yml`
@@ -162,6 +109,61 @@ graph TB
 - Parallel API calls using `asyncio.gather()`
 - Connection pooling and timeout management
 
+## Project Structure
+
+```
+mcp-servers/qbittorrent-mcp/
+├── Dockerfile                      # Container build
+├── src/mcp_qbittorrent/
+│   ├── server.py                   # FastMCP server entry point
+│   ├── config.py                   # Pydantic settings
+│   ├── clients/qbittorrent_client.py  # Async API client
+│   ├── models/schemas.py           # Pydantic response models
+│   └── tools/qbittorrent_tools.py  # 6 MCP tools
+└── tests/
+    ├── unit/                       # Unit tests with mocks
+    └── integration/                # Integration tests
+```
+
+## Quick Start
+
+### Prerequisites
+- Docker & Docker Compose (for full stack deployment)
+- Python 3.11+ with uv (for local development)
+- qBittorrent with Web UI enabled
+
+### Option 1: Docker Compose (Recommended)
+
+This MCP server is part of the Turtle App stack. To run the complete system:
+
+```bash
+# From the main turtle_app directory
+cd build
+docker-compose up -d
+```
+
+The MCP server will be available at `http://localhost:8001/mcp` and automatically connects to qBittorrent.
+
+### Option 2: Standalone Development
+
+```bash
+# 1. Navigate to MCP server directory
+cd mcp-servers/qbittorrent-mcp
+
+# 2. Install dependencies
+uv sync
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your qBittorrent credentials:
+#   QB_MCP_QBITTORRENT_URL=http://localhost:15080
+#   QB_MCP_QBITTORRENT_USERNAME=admin
+#   QB_MCP_QBITTORRENT_PASSWORD=your_password
+
+# 4. Start the server (HTTP transport)
+uv run fastmcp run mcp_qbittorrent.server:mcp --transport http
+```
+
 ### Testing
 
 ```bash
@@ -178,8 +180,6 @@ uv run pytest tests/integration/ -v   # Integration tests (requires qBittorrent)
 
 ### Development Status
 
-**✅ Completed:**
-
 - Async Python client with session management
 - 6 MCP tools with comprehensive validation
 - Type-safe Pydantic response models
@@ -188,13 +188,6 @@ uv run pytest tests/integration/ -v   # Integration tests (requires qBittorrent)
 - Error handling and logging
 - Docker containerization with HTTP transport
 - Integration with Turtle App multi-agent system
-
-**🔄 Future Enhancements:**
-
-- CI/CD pipeline setup
-- Performance monitoring and optimization
-- Additional qBittorrent API endpoints
-
 
 ## References
 
