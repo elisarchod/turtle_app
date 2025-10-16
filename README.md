@@ -169,14 +169,14 @@ This multi-model approach balances cost, performance, and quality across the sys
 - **Capabilities**: Movie recommendations, plot analysis, metadata retrieval
 - **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
 
-### Movie Download Manager Agent
+### Movie Download Manager (with MCP)
 - **Role**: Movie download management expert
 - **Integration**: qBittorrent MCP server (HTTP transport)
 - **Capabilities**: Download monitoring, movie search, progress tracking
 - **Implementation**: `mcp-servers/qbittorrent-mcp/`
 
-### Library Manager Agent
-- **Role**: Local movie library specialist
+### Library Manager Tool
+- **Role**: Local movie library 
 - **Integration**: Samba/CIFS network shares
 - **Capabilities**: Library scanning, file organization, statistics
 - **Implementation**: `turtleapp/src/core/tools/library_manager.py`
