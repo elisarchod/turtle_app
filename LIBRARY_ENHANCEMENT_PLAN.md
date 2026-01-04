@@ -1,7 +1,8 @@
-# Library Manager Enhancement: Smart Search & Filter
+# Turtle App Enhancements: Library Search & Auto-Download
 
-## Goal
-Add intelligent search and filter capabilities to the library_manager tool while keeping API costs low by performing all filtering server-side and only returning relevant results to the LLM.
+## Goals
+1. Add intelligent search and filter capabilities to the library_manager tool while keeping API costs low by performing all filtering server-side and only returning relevant results to the LLM.
+2. Auto-detect magnet links and torrent URLs in user messages and automatically add them to qBittorrent.
 
 ## User Requirements
 - Search for specific movies: "Do I have Terminator 2?"
@@ -191,11 +192,191 @@ def extract_movie_metadata(filename: str) -> dict:
 - `test_tool_specific_movie_search()` - Search for specific movie
 - `test_tool_format_filter()` - Filter by file format
 - `test_tool_general_scan()` - General library scan
-- `test_tool_backward_compatibility()` - Empty string input still works
+
+---
+
+## Enhancement 2: Auto-Detect Magnet Links & Torrent URLs
+
+### Goal
+Automatically detect when user sends a magnet link or torrent URL and route to download manager to add it to qBittorrent.
+
+### Example User Message
+```
+magnet:?xt=urn:btih:B092C038E1B1367A34F1B3D48F8615FBEC19889F&dn=Labyrinth.1986.REMASTERED.1080p.BluRay.x265&tr=...
+```
+
+### Implementation Details
+
+**Update Supervisor Prompt** (turtleapp/src/core/prompts/supervisor.py):
+
+Add magnet/torrent URL detection to routing rules:
+
+```python
+SUPERVISOR_SYSTEM_MESSAGE = """You are the supervisor of a specialized home theater management system with three expert agents:
+
+**Available Agents:**
+- movie_details_retriever_agent: Expert in searching movie database (42k+ movies) for plot, cast, director, genre info
+- movies_download_manager: Expert in movie file search and download management via download client
+- library_manager_agent: Expert in scanning SMB network shares for existing movie files
+
+**Routing Decision Rules:**
+
+**PRIORITY: Auto-detect URLs and Magnet Links**
+If the user's message contains a magnet link (starts with "magnet:?") or torrent URL (contains ".torrent"):
+   - Route to movies_download_manager IMMEDIATELY
+   - The agent will extract and add the torrent automatically
+
+1. Route to movie_details_retriever_agent when user asks about:
+   - Movie plots, summaries, or details
+   - Cast, director, or crew information
+   - Movie recommendations or similar films
+   - Genre-based queries
+
+2. Route to movies_download_manager when user wants to:
+   - Download or find movies
+   - Check download status/progress
+   - Search for available movie files
+   - **Message contains magnet links or .torrent URLs**
+
+3. Route to library_manager_agent when user asks about:
+   - What movies they already own
+   - Library organization or scanning
+   - Local file management
+
+4. Route to FINISH when:
+   - Task is complete and no further action needed
+   - User says goodbye or thanks
+   - Question is answered satisfactorily
+   - Agent has provided requested information (e.g., library scan results, movie details, download status)
+
+**Context**: This is a home theater enthusiast's personal system for managing their movie collection.
+
+**Important**: If the latest message contains complete information that answers the user's request (like library scan results, movie details, or download status), route to FINISH rather than routing back to the same agent.
+
+Analyze the user's request and route to the most appropriate specialist agent."""
+```
+
+**Optional: Add URL Extraction Prompt for Torrent Agent**
+
+Create specialized prompt for torrent agent (turtleapp/src/core/prompts/agents.py):
+
+```python
+TORRENT_AGENT_TEMPLATE = """You are a download manager expert with access to qBittorrent tools.
+
+Your expertise includes:
+- Adding torrents via magnet links or .torrent URLs
+- Monitoring download progress and status
+- Managing torrent categories and organization
+- Searching for available torrents
+
+**Available Tools:** {tools}
+**Tool Usage Guidelines:**
+- If the user's message contains a magnet link (magnet:?) or torrent URL (.torrent):
+  * Extract the complete URL/magnet link
+  * Use qb_add_torrent tool with the URL
+  * Optionally set category="Movies" for organization
+- For status queries: use qb_list_torrents
+- For search queries: use qb_search_torrents
+
+**Task:** {input}
+
+Think step by step:
+1. Check if message contains magnet link or .torrent URL
+2. If yes, extract the complete URL and add it using qb_add_torrent
+3. If no, determine what download-related action user wants
+4. Use appropriate tool with correct parameters
+5. Present results clearly
+
+Action: {tool_names}
+Action Input: the input for the action
+Observation: the result of the action
+Thought: What's the result and what should I do next?
+Final Answer: Complete response for the user
+
+{agent_scratchpad}"""
+
+TORRENT_AGENT_PROMPT = PromptTemplate(
+    template=TORRENT_AGENT_TEMPLATE,
+    input_variables=["tools", "tool_names", "input", "agent_scratchpad"]
+)
+```
+
+**Update Torrent Agent** (turtleapp/src/core/nodes/agents.py):
+
+```python
+# Add specialized prompt for torrent agent
+torrent_agent = ToolAgent(
+    get_qbittorrent_tools(),
+    name="movies_download_manager",
+    specialized_prompt=TORRENT_AGENT_PROMPT  # Add this line
+)
+```
+
+### How It Works
+
+**User Flow:**
+1. User sends: `magnet:?xt=urn:btih:B092C038E1B1367A34F1B3D48F8615FBEC19889F&dn=Labyrinth.1986...`
+2. Supervisor detects "magnet:?" in message
+3. Routes to movies_download_manager agent
+4. Agent extracts magnet link and calls `qb_add_torrent(url="magnet:?...")`
+5. Returns confirmation: "Added Labyrinth (1986) to downloads"
+
+**Supported Formats:**
+- Magnet links: `magnet:?xt=urn:btih:...`
+- Torrent URLs: `https://example.com/file.torrent`
+- Mixed messages: "Download this: magnet:?..." (agent extracts URL)
+
+### Testing
+
+**Unit Tests** (add to turtleapp/tests/test_torrent_agent.py):
+- `test_detect_magnet_link()` - Verify magnet link detection
+- `test_extract_magnet_from_message()` - Extract URL from mixed message
+- `test_detect_torrent_url()` - Verify .torrent URL detection
+
+**Integration Tests** (@pytest.mark.expensive):
+- `test_add_magnet_link()` - Send magnet link, verify qb_add_torrent called
+- `test_add_torrent_url()` - Send .torrent URL, verify addition
+- `test_supervisor_routes_magnet_links()` - Test full workflow routing
+
+### Files to Modify for Auto-Download Feature
+
+1. **turtleapp/src/core/prompts/supervisor.py** (~10 lines changed)
+   - Add magnet/torrent URL detection to routing rules
+   - Make it a priority check
+
+2. **turtleapp/src/core/prompts/agents.py** (~40 lines added) - OPTIONAL
+   - Add TORRENT_AGENT_TEMPLATE with URL extraction guidance
+   - Add TORRENT_AGENT_PROMPT export
+
+3. **turtleapp/src/core/nodes/agents.py** (~2 lines changed) - OPTIONAL
+   - Add specialized_prompt parameter to torrent_agent
+
+4. **turtleapp/tests/test_torrent_agent.py** (~50 lines added)
+   - Add tests for URL detection and extraction
+   - Test integration with qBittorrent tools
+
+### Implementation Sequence
+
+**Phase A1: Supervisor Routing** (Low Risk)
+1. Update supervisor prompt with magnet/torrent detection
+2. Test routing with sample magnet links
+
+**Phase A2: Agent Enhancement** (Optional, Medium Risk)
+1. Add specialized torrent agent prompt
+2. Update torrent agent to use specialized prompt
+3. Test URL extraction and tool invocation
+
+**Phase A3: Testing**
+1. Test with various magnet link formats
+2. Test with .torrent URLs
+3. Test mixed messages ("Download this: magnet...")
+4. Test full workflow end-to-end
+
+---
 
 ## Files to Modify
 
-### Primary Implementation
+### Primary Implementation (Library Search)
 1. **turtleapp/src/core/tools/library_manager.py** (~200 lines added)
    - Add 4 new helper methods (_parse_user_intent, _filter_by_extension, _search_movies, _format_output)
    - Update _run() method to accept and process user message
@@ -220,7 +401,12 @@ def extract_movie_metadata(filename: str) -> dict:
 - **turtleapp/src/core/prompts/** - No changes (direct node doesn't use prompts)
 - **turtleapp/settings.py** - No changes (no new config needed)
 
-## Implementation Sequence
+## Combined Implementation Sequence
+
+### Phase 0: Auto-Download Feature (Quickest Win)
+1. Update supervisor prompt with magnet/torrent detection (Phase A1)
+2. Optionally add specialized torrent agent prompt (Phase A2)
+3. Test magnet link detection (Phase A3)
 
 ### Phase 1: Core Utilities (Low Risk)
 1. Add `extract_movie_metadata()` to movie_names.py
@@ -250,9 +436,8 @@ def extract_movie_metadata(filename: str) -> dict:
 
 ### Phase 6: Validation
 1. Test various user query patterns
-2. Verify backward compatibility (empty message still works)
-3. Test full workflow with supervisor routing
-4. Verify token usage is minimal
+2. Test full workflow with supervisor routing
+3. Verify token usage is minimal
 
 ## Expected Outcomes
 
@@ -295,10 +480,17 @@ These can be added later without major refactoring:
 
 ## Success Criteria
 
+### Library Search Enhancement
 - ✅ Can search for specific movies by title
 - ✅ Can filter by file format (mkv, mp4, etc.)
 - ✅ Fuzzy matching handles typos
 - ✅ Output tokens scale with result count (not library size)
 - ✅ General "show library" queries still work
+- ✅ Works seamlessly with supervisor routing and workflow
+
+### Auto-Download Enhancement
+- ✅ Magnet links automatically detected and added to qBittorrent
+- ✅ Torrent URLs (.torrent) automatically detected and added
+- ✅ Works with mixed messages ("Download this: magnet...")
+- ✅ User receives confirmation after torrent is added
 - ✅ All tests pass (unit + integration)
-- ✅ Backward compatible with existing behavior
