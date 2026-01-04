@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
     networks:
       - turtle-network
+      - default
     extra_hosts:
       # Allow host.docker.internal to work on Linux too
       - "host.docker.internal:host-gateway"
@@ -48,6 +49,7 @@ services:
     restart: unless-stopped
     networks:
       - turtle-network
+      - default
     extra_hosts:
       # Allow host.docker.internal to work on Linux too
       - "host.docker.internal:host-gateway"
@@ -61,3 +63,6 @@ networks:
     attachable: true
     ipam:
       driver: default
+  default:
+    external: true
+    name: homeserver-media_default
