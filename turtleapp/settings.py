@@ -67,7 +67,7 @@ class MCPSettings(BaseAppSettings):
     """MCP server configuration (HTTP transport)."""
     qbittorrent_url: str = Field(
         alias="TURTLEAPP_MCP_QBITTORRENT_URL",
-        default="http://mcp-qbittorrent:8000/mcp",
+        default="http://turtle-mcp-qbittorrent:8000/mcp",
         description="HTTP URL for qBittorrent MCP server"
     )
 

@@ -49,7 +49,7 @@ User: "What's my download speed limit?"
 
 **Deployment:**
 - Built and deployed via main `build/docker-compose.yml`
-- Exposes HTTP MCP endpoint on port 8001
+- Exposes HTTP MCP endpoint on port 9001
 - Connects to qBittorrent container automatically
 
 ## Technical Architecture
@@ -142,7 +142,7 @@ cd build
 docker-compose up -d
 ```
 
-The MCP server will be available at `http://localhost:8001/mcp` and automatically connects to qBittorrent.
+The MCP server will be available at `http://localhost:9001/mcp` and automatically connects to qBittorrent.
 
 ### Option 2: Standalone Development
 

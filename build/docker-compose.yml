@@ -1,3 +1,5 @@
+name: turtle-app
+
 services:
 
   # qbittorrent:
@@ -42,16 +44,17 @@ services:
     build:
       context: ../mcp-servers/qbittorrent-mcp
       dockerfile: Dockerfile
-    container_name: mcp-qbittorrent
+    image: turtle-app/mcp-qbittorrent:latest
+    container_name: turtle-mcp-qbittorrent
     environment:
       - TURTLEAPP_QB_QBITTORRENT_URL=http://qbittorrent:15080
       - TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
       - TURTLEAPP_QB_QBITTORRENT_PASSWORD=${QB_PASSWORD:-adminadmin}
     ports:
-      - 8001:8000
+      - 9001:8000
     restart: unless-stopped
     networks:
-      - default
+      - turtle-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/mcp/tools"]
       interval: 30s
@@ -65,17 +68,18 @@ services:
     build:
       context: ..
       dockerfile: build/Dockerfile_api
-    container_name: turtle-app-api
+    image: turtle-app/api:latest
+    container_name: turtle-api-server
     env_file:
       - ../.env.local
     environment:
-      - TURTLEAPP_MCP_QBITTORRENT_URL=http://mcp-qbittorrent:8001/mcp
+      - TURTLEAPP_MCP_QBITTORRENT_URL=http://turtle-mcp-qbittorrent:8000/mcp
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
     ports:
-      - 8002:8000
+      - 9002:8000
     restart: unless-stopped
     networks:
-      - default
+      - turtle-network
     depends_on:
       mcp-qbittorrent:
         condition: service_healthy
@@ -83,7 +87,7 @@ services:
       #   condition: service_started
 
 networks:
-  default:
+  turtle-network:
     driver: bridge
     attachable: true
     ipam:
