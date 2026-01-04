@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from turtleapp.src.utils import logger
@@ -60,6 +62,22 @@ def health_check():
           responses={500: {"model": ErrorResponse}})
 def chat(request: ChatRequest):
     return _process_chat_request(request.message, request.thread_id)
+
+
+# Mount static files directory
+static_dir = Path(__file__).parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    
+    # Serve index.html at root path
+    @app.get("/")
+    def read_root():
+        from fastapi.responses import FileResponse
+        index_path = static_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        return {"message": "Turtle App API - UI not found"}
+
 
 def _process_chat_request(message: str, thread_id: Optional[str] = None) -> ChatResponse:
     logger.info(f"Received request: {message}")
