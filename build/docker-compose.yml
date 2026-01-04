@@ -51,7 +51,7 @@ services:
       - TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
       - TURTLEAPP_QB_QBITTORRENT_PASSWORD=${QB_PASSWORD:-adminadmin}
     ports:
-      - 9001:8000
+      - 8201:8000
     restart: unless-stopped
     networks:
       - turtle-network
@@ -76,7 +76,7 @@ services:
       - TURTLEAPP_MCP_QBITTORRENT_URL=http://turtle-mcp-qbittorrent:8000/mcp
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
     ports:
-      - 9002:8000
+      - 8202:8000
     restart: unless-stopped
     networks:
       - turtle-network
