@@ -11,8 +11,8 @@ from langgraph.types import Command
 
 from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
-from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT
-from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool
+from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_AGENT_PROMPT, SUBTITLE_MANAGER_PROMPT
+from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool, subtitle_search_tool, subtitle_download_tool
 from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
 
 
@@ -57,9 +57,14 @@ class ToolAgent:
 
 
 def library_scan_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    """Direct library scan without ReAct reasoning."""
+    """Direct library scan with smart message parsing."""
     try:
-        result = library_manager_tool._run("")
+        # Get user's latest message
+        latest_message = state["messages"][-1].content if state["messages"] else ""
+
+        # Tool now receives full message for intelligent parsing
+        result = library_manager_tool._run(latest_message)
+
         return Command(
             update={"messages": [HumanMessage(content=result)]},
             goto=SUPERVISOR_NODE
@@ -77,6 +82,13 @@ movie_retriever_agent = ToolAgent([movie_retriever_tool], specialized_prompt=MOV
 # Download manager agent - uses MCP tools from qBittorrent MCP server
 torrent_agent = ToolAgent(
     get_qbittorrent_tools(),  # Returns all MCP tools ready to use
-    name="movies_download_manager"
-    # No specialized_prompt - uses AGENT_BASE_PROMPT default
+    name="movies_download_manager",
+    specialized_prompt=TORRENT_AGENT_PROMPT
+)
+
+# Subtitle manager agent - uses search and download tools
+subtitle_agent = ToolAgent(
+    [subtitle_search_tool, subtitle_download_tool],
+    name="subtitle_manager_agent",
+    specialized_prompt=SUBTITLE_MANAGER_PROMPT
 )

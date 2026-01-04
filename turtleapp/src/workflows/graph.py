@@ -9,7 +9,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_supervisor_llm
-from turtleapp.src.core.nodes import library_scan_node, movie_retriever_agent, torrent_agent
+from turtleapp.src.core.nodes import library_scan_node, movie_retriever_agent, torrent_agent, subtitle_agent
 from turtleapp.src.core.nodes import SupervisorNodeCreator, ToolAgent
 from turtleapp.src.utils.memory_utils import create_thread_id
 
@@ -93,7 +93,8 @@ def create_movie_workflow() -> WorkflowGraph:
     agentic_tools = {
         movie_retriever_agent.name: movie_retriever_agent,
         torrent_agent.name: torrent_agent,
-        "library_manager_agent": library_scan_node
+        "library_manager_agent": library_scan_node,
+        subtitle_agent.name: subtitle_agent
     }
     
     return (WorkflowGraph(tools=agentic_tools, name="Multi-agent Movie Supervisor")

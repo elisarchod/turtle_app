@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -72,6 +72,25 @@ class MCPSettings(BaseAppSettings):
     )
 
 
+class OpenSubtitlesSettings(BaseAppSettings):
+    api_key: str = Field(
+        alias="OPENSUBTITLES_API_KEY",
+        description="OpenSubtitles.com API key"
+    )
+    username: str = Field(
+        alias="OPENSUBTITLES_USERNAME",
+        description="OpenSubtitles.com account username"
+    )
+    password: str = Field(
+        alias="OPENSUBTITLES_PASSWORD",
+        description="OpenSubtitles.com account password"
+    )
+    default_languages: List[str] = Field(
+        default=["en", "he"],
+        description="Default subtitle languages (ISO 639-1 codes): English and Hebrew"
+    )
+
+
 class Settings(BaseAppSettings):
     supervisor_model: str = Field(alias="SUPERVISOR_MODEL", default="claude-3-5-sonnet-20241022", description="Model to use for supervisor agent")
     agent_model: str = Field(alias="AGENT_MODEL", default="claude-3-5-haiku-20241022", description="Model to use for regular agents")
@@ -84,6 +103,7 @@ class Settings(BaseAppSettings):
     data: DataSettings = Field(default_factory=DataSettings)
     smb: SMBSettings = Field(default_factory=SMBSettings)
     mcp: MCPSettings = Field(default_factory=MCPSettings)
+    opensubtitles: OpenSubtitlesSettings = Field(default_factory=OpenSubtitlesSettings)
 
 
 settings = Settings()

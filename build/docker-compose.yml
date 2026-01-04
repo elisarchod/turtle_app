@@ -1,45 +1,6 @@
 name: turtle-app
 
 services:
-
-  # qbittorrent:
-  #   image: linuxserver/qbittorrent
-  #   container_name: qbittorrent-server
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - UMASK_SET=022
-  #     - WEBUI_PORT=15080
-  #   volumes:
-  #     - ${STACK_PATH:-./volumes}/qbittorrent/config:/config
-  #     - ${HDD_PATH:-./downloads}:/downloads
-  #   ports:
-  #     - 6881:6881
-  #     - 6881:6881/udp
-  #     - 15080:15080
-  #     - 1080:1080
-  #   restart: unless-stopped
-  
-  # nas:
-  #   image: dperson/samba
-  #   container_name: samba
-  #   environment:
-  #     - TZ=${TZ:-UTC}
-  #   networks:
-  #     - default
-  #   ports:
-  #     - 1139:139
-  #     - 1445:445
-  #   restart: unless-stopped
-  #   stdin_open: true
-  #   tty: true
-  #   volumes:
-  #     - ${HDD_PATH:-./downloads}:/downloads
-  #   command: >
-  #     -s "${SAMBA_SHARE_PATH:-daves};/downloads;yes;no;no"
-  #     -u "${SAMBA_USER:-dave};${SAMBA_PASSWORD:-password}"
-  #     -w "WORKGROUP"
-  
   mcp-qbittorrent:
     build:
       context: ../mcp-servers/qbittorrent-mcp
@@ -47,7 +8,10 @@ services:
     image: turtle-app/mcp-qbittorrent:latest
     container_name: turtle-mcp-qbittorrent
     environment:
-      - TURTLEAPP_QB_QBITTORRENT_URL=http://qbittorrent:15080
+      # Connect to external qBittorrent container via host
+      # On Mac/Windows: host.docker.internal works
+      # On Linux: use host IP or add qbittorrent container to turtle-network
+      - TURTLEAPP_QB_QBITTORRENT_URL=${QBITTORRENT_URL:-http://host.docker.internal:8100}
       - TURTLEAPP_QB_QBITTORRENT_USERNAME=admin
       - TURTLEAPP_QB_QBITTORRENT_PASSWORD=${QB_PASSWORD:-adminadmin}
     ports:
@@ -55,14 +19,15 @@ services:
     restart: unless-stopped
     networks:
       - turtle-network
+    extra_hosts:
+      # Allow host.docker.internal to work on Linux too
+      - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/mcp/tools"]
+      # Use Python instead of curl (curl not installed in container)
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/mcp/tools').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
-    # depends_on:
-    #   - qbittorrent
-
 
   turtle-app-api:
     build:
@@ -70,21 +35,25 @@ services:
       dockerfile: build/Dockerfile_api
     image: turtle-app/api:latest
     container_name: turtle-api-server
-    env_file:
-      - ../.env.local
+    # Optional: uncomment if .env.local exists
+    # env_file:
+    #   - ../.env.local
     environment:
       - TURTLEAPP_MCP_QBITTORRENT_URL=http://turtle-mcp-qbittorrent:8000/mcp
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
+      # Samba connection - adjust if needed for external Samba container
+      - SAMBA_SERVER=${SAMBA_SERVER:-host.docker.internal}
     ports:
       - 8202:8000
     restart: unless-stopped
     networks:
       - turtle-network
+    extra_hosts:
+      # Allow host.docker.internal to work on Linux too
+      - "host.docker.internal:host-gateway"
     depends_on:
       mcp-qbittorrent:
         condition: service_healthy
-      # nas:
-      #   condition: service_started
 
 networks:
   turtle-network:
