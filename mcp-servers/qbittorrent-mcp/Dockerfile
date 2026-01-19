@@ -20,4 +20,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app/src
 
 # Run FastMCP server with HTTP transport
-CMD [".venv/bin/python", "-m", "fastmcp", "run", "mcp_qbittorrent.server:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
+CMD [".venv/bin/fastmcp", "run", "mcp_qbittorrent.server:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
