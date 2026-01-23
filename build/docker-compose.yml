@@ -16,7 +16,9 @@ services:
       - TURTLEAPP_QB_QBITTORRENT_PASSWORD=${QB_PASSWORD:-adminadmin}
     ports:
       - 8201:8000
-    restart: unless-stopped
+    restart: on-failure:3
+    profiles:
+      - mcp
     networks:
       - turtle-network
       - default
@@ -46,16 +48,15 @@ services:
       - SAMBA_SERVER=${SAMBA_SERVER:-host.docker.internal}
     ports:
       - 8202:8000
-    restart: unless-stopped
+    restart: "no"
+    profiles:
+      - api
     networks:
       - turtle-network
       - default
     extra_hosts:
       # Allow host.docker.internal to work on Linux too
       - "host.docker.internal:host-gateway"
-    depends_on:
-      mcp-qbittorrent:
-        condition: service_healthy
 
 networks:
   turtle-network:

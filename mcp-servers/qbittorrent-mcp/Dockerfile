@@ -6,12 +6,11 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy MCP server code
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 COPY src/ ./src/
 
-# Install dependencies from pyproject.toml
-RUN uv venv && \
-    uv pip install aiohttp>=3.12.15 fastmcp>=2.12.4 pydantic>=2.11.9 pydantic-settings>=2.11.0
+# Install package and dependencies using uv sync
+RUN uv sync --frozen --no-dev
 
 # Expose HTTP port
 EXPOSE 8000
