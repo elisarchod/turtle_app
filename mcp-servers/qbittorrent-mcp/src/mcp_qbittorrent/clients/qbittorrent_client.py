@@ -100,7 +100,47 @@ class QBittorrentClient:
         return await self._request("POST", endpoints[action], data=data)
 
     async def search_torrents(self, query: str, plugins: str = "all", category: str = "all", limit: int = 100) -> Dict:
-        """Search for torrents and return results."""
+        """Search for torrents using qBittorrent's search plugins with polling.
+
+        This function implements a 3-phase async workflow:
+
+        Phase 1 - Job Creation:
+            POST to /api/v2/search/start to initiate search
+            Returns job ID for tracking
+
+        Phase 2 - Status Polling (30-second timeout):
+            Polls every 1 second checking job status
+            Waits for status to change from "Running" to "Stopped"
+            30 iterations max = 30 seconds total timeout
+
+        Phase 3 - Result Collection & Cleanup:
+            Fetches results using job ID
+            Deletes search job from qBittorrent to prevent accumulation
+
+        Why 30 iterations?
+            - Balance between giving enough time for search completion
+            - Preventing indefinite hangs if search fails
+            - 30 seconds is typical for most torrent searches across plugins
+            - If search doesn't complete, partial results may still be available
+
+        Search plugins:
+            "all": Searches all enabled plugins in qBittorrent
+            Or specify specific plugin names (comma-separated)
+
+        Args:
+            query: Search query string (movie title, keywords, etc.)
+            plugins: Plugin selection ("all" or specific plugin names)
+            category: Filter category ("all", "movies", "tv", etc.)
+            limit: Maximum number of results to return (default 100)
+
+        Returns:
+            Dict containing search results with torrent metadata
+            (name, size, seeders, leechers, url)
+
+        Raises:
+            APIError: If search initiation or result fetching fails
+            AuthenticationError: If token expires during operation
+        """
         job = await self._request("POST", "/api/v2/search/start", data={"pattern": query, "plugins": plugins, "category": category})
         search_id = job.get("id")
 

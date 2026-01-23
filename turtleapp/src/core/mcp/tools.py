@@ -30,7 +30,15 @@ class MCPClientManager:
         self._initialized = False
 
     async def get_client(self) -> MultiServerMCPClient:
-        """Get or create MCP client connection."""
+        """Get or create MCP client connection.
+
+        Lazy initialization pattern - the client is only created and connected
+        when first requested. The connection is reused for all subsequent calls.
+        This is called when loading MCP tools at agent initialization.
+
+        Returns:
+            Connected MultiServerMCPClient instance ready for tool access
+        """
         if not self._initialized:
             config = _get_qbittorrent_mcp_config()
             self._client = MultiServerMCPClient(config)
@@ -52,7 +60,26 @@ _manager = MCPClientManager()
 
 
 def get_qbittorrent_tools():
-    """Get all tools from qBittorrent MCP server."""
+    """Get all tools from qBittorrent MCP server.
+
+    IMPORTANT: This function uses blocking asyncio.run() calls and should only
+    be called during agent initialization, not in async contexts.
+
+    Performs two synchronous async operations:
+    1. Connects to the MCP server via HTTP transport (if not already connected)
+    2. Loads all available tools from the server (search, download, status, etc.)
+
+    The tools are loaded once and cached in the agent. Subsequent requests use
+    the same tool instances without reconnecting.
+
+    Returns:
+        List of LangChain-compatible Tool objects from the qBittorrent MCP server.
+        Typically includes 6 tools: search, add_torrent, pause, resume, delete, get_status.
+
+    Network details:
+        - Docker: http://turtle-mcp-qbittorrent:8000/mcp (container-to-container)
+        - Local dev: http://localhost:9001/mcp (host machine)
+    """
     client = asyncio.run(_manager.get_client())
     return asyncio.run(client.get_tools())
 

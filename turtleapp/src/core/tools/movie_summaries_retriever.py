@@ -11,6 +11,38 @@ vector_store: PineconeVectorStore = PineconeVectorStore.from_existing_index(
 )
 
 def parse_document_content(content: str) -> dict[str, str]:
+    """Parse Pinecone document content into structured dictionary.
+
+    Document format from vector store:
+        "title: Inception | release_year: 2010 | director: Christopher Nolan | ..."
+
+    This one-liner performs:
+    1. Split by ' | ' to get field strings
+    2. Filter fields containing ':' separator
+    3. Split each field on first ':' to get (key, value) pair
+    4. Strip whitespace from keys and values
+    5. Filter out empty keys or values
+
+    Comprehension breakdown:
+        for field in content.strip().split(' | ')  # ["title: Inception", "year: 2010"]
+            if ':' in field                         # Skip malformed fields
+            for key, value in [field.split(':', 1)] # Split on first colon only
+            if key.strip() and value.strip()        # Skip empty keys/values
+
+    Example:
+        Input: "title: Inception | release_year: 2010 | director: Christopher Nolan"
+        Output: {
+            "title": "Inception",
+            "release_year": "2010",
+            "director": "Christopher Nolan"
+        }
+
+    Args:
+        content: Pipe-delimited string with key:value pairs from Pinecone
+
+    Returns:
+        Dictionary with parsed field mappings (all values are strings)
+    """
     return {
         key.strip(): value.strip()
         for field in content.strip().split(' | ') if ':' in field

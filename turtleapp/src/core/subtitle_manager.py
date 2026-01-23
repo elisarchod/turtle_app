@@ -41,16 +41,50 @@ class SubtitleManager:
         languages: List[str] = None,
         year: Optional[int] = None
     ) -> List[dict]:
-        """
-        Search subtitles by movie title.
-        
+        """Search OpenSubtitles.com with intelligent filtering and sorting.
+
+        Performs a 3-stage process to find relevant subtitles:
+
+        Stage 1 - API Search:
+            Calls OpenSubtitles search with query + language filters
+            If year provided, includes it in search params for better matching
+
+        Stage 2 - Post-Search Filtering:
+            Year validation: Extracts year from release string and filters mismatches
+            Handles nested data structure navigation:
+            - subtitle.attributes.files[0].file_id (for download)
+            - subtitle.attributes.feature_details.{title, year} (for metadata)
+            - subtitle.attributes.{language, download_count, ratings} (for ranking)
+
+        Stage 3 - Sorting by Popularity:
+            Sorts by download_count descending
+            Rationale: More downloads = higher quality sync and translation
+
+        Data structure complexity:
+            OpenSubtitles API returns deeply nested objects. This function
+            carefully navigates attribute paths with safe defaults to avoid
+            AttributeErrors on missing fields (e.g., some results lack feature_details).
+
+        Language defaults:
+            Falls back to settings.opensubtitles.default_languages (typically ["en", "he"])
+
         Args:
             query: Movie title to search for
-            languages: List of ISO 639-1 language codes (default: English and Hebrew)
-            year: Optional year to filter results
-            
+            languages: List of ISO 639-1 language codes (e.g., ["en", "es", "fr"])
+                      None = use default languages from settings
+            year: Optional movie release year for filtering (e.g., 2010)
+                 Helps disambiguate remakes or different movies with same title
+
         Returns:
-            List of subtitle dictionaries with file_id, language, downloads, rating
+            List of subtitle dictionaries sorted by popularity, each containing:
+            - file_id: Unique ID for downloading
+            - language: ISO 639-1 code (e.g., "en")
+            - downloads: Number of times downloaded (popularity metric)
+            - rating: User rating (0-10 scale)
+            - release: Release string (e.g., "Inception.2010.1080p.BluRay")
+            - format: Subtitle format (typically "srt")
+            - title: Movie title from metadata
+            - year: Movie release year from metadata
         """
         self._ensure_authenticated()
         

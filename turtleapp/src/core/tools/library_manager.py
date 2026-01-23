@@ -51,16 +51,38 @@ Output: Relevant movies or library statistics (formatted for minimal tokens)
 """
 
     def _parse_user_intent(self, message: str) -> Tuple[str, str, str]:
-        """Parse user message to extract search intent.
-        
+        """Parse user message to extract search intent using NLP-style patterns.
+
+        This function performs multi-stage parsing to understand what the user wants:
+        1. Detects file format mentions (mkv, mp4, avi, mov, wmv)
+        2. Determines if format is an explicit filter vs a matching hint
+        3. Extracts meaningful keywords by removing stop words
+        4. Classifies intent into three categories
+
+        Intent classification:
+        - "general_scan": No search keywords (e.g., "what movies do I have?")
+        - "specific_search": Keywords present (e.g., "do I have Inception?")
+        - "format_filter": Explicit format filtering (e.g., "show me mkv files only")
+
+        Format handling philosophy:
+        - Format is treated as a matching hint (score boost) by default
+        - Only becomes a hard filter when user explicitly requests
+          (using "only", "just", "show me X files" patterns)
+
+        Examples:
+            "Do I have Inception?" -> ("inception", "", "specific_search")
+            "Show my library" -> ("", "", "general_scan")
+            "Find Terminator 2 mkv" -> ("terminator 2", "mkv", "specific_search")
+            "Show me mkv files only" -> ("", "mkv", "format_filter")
+
         Args:
             message: User's natural language query
-            
+
         Returns:
             Tuple of (search_query, file_format, intent_type)
-            - search_query: Extracted search keywords (empty if none)
-            - file_format: Detected file format hint (mkv, mp4, etc.) or empty (used for matching, not filtering)
-            - intent_type: "specific_search" or "general_scan"
+            - search_query: Space-separated keywords with stop words removed
+            - file_format: Detected format (mkv/mp4/avi/mov/wmv) or empty string
+            - intent_type: One of "general_scan", "specific_search", "format_filter"
         """
         message_lower = message.lower()
         search_query = ""
@@ -130,24 +152,47 @@ Output: Relevant movies or library statistics (formatted for minimal tokens)
         return filtered
     
     def _search_movies(self, movies: Dict[str, str], query: str, limit: int = 20, format_hint: str = "") -> List[Tuple[str, str, float]]:
-        """Search movies with fuzzy matching.
-        
-        Uses progressive fallback strategy:
-        1. Exact substring match (score: 1.0)
-        2. All keywords present (score: 0.9)
-        3. Fuzzy similarity using difflib (threshold: 0.6)
-        4. Partial keyword match (score: 0.5 * match_ratio)
-        
-        Format hint can boost scores for matching file extensions (helps with matching, not filtering).
-        
+        """Search movies using 4-tier fuzzy matching algorithm.
+
+        Progressive fallback strategy ensures good results even with typos:
+
+        Tier 1 - Exact substring match (score: 1.0):
+            Query appears as-is in movie name
+            Example: "matrix" matches "The Matrix 1999"
+
+        Tier 2 - All keywords present (score: 0.9):
+            Every word in query found somewhere in movie name
+            Example: "matrix 1999" matches "The Matrix 1999"
+
+        Tier 3 - Fuzzy similarity (score: 0.6-1.0):
+            Uses difflib.SequenceMatcher for character-level similarity
+            Threshold: 0.6 minimum (60% similarity)
+            Example: "matirx" (typo) matches "matrix" with score ~0.85
+
+        Tier 4 - Partial keyword match (score: 0.25-0.5):
+            At least one query word found in movie name
+            Formula: 0.5 * (matched_words / total_words)
+            Example: "terminator salvation" finds "Terminator 2" with score 0.25
+
+        Format hint scoring:
+            If format_hint matches file extension, score multiplied by 1.1 (capped at 1.0)
+            This helps disambiguate when user mentions format in query
+            Example: "inception mkv" boosts MKV versions over MP4
+
+        Magic numbers explained:
+            - 0.6: Minimum fuzzy similarity (lower = too many false positives)
+            - 0.9: All-keywords-present score (high confidence but not exact match)
+            - 0.5: Partial match base score (low confidence)
+            - 1.1: Format boost multiplier (small preference, not decisive)
+
         Args:
             movies: Dictionary of movie_name -> file_path
-            query: Search query string
-            limit: Maximum number of results to return
-            format_hint: Optional file format hint to boost matching scores
-            
+            query: Search query string (space-separated keywords)
+            limit: Maximum number of results to return (default 20)
+            format_hint: Optional file format (mkv/mp4/etc.) to boost matching scores
+
         Returns:
-            List of (movie_name, path, score) tuples sorted by relevance
+            List of (movie_name, path, score) tuples sorted by score descending
         """
         if not query:
             return [(name, path, 1.0) for name, path in list(movies.items())[:limit]]
@@ -190,22 +235,47 @@ Output: Relevant movies or library statistics (formatted for minimal tokens)
         results.sort(key=lambda x: x[2], reverse=True)
         return results[:limit]
     
-    def _format_output(self, all_movies: Dict[str, str], results: List[Tuple[str, str, float]], 
+    def _format_output(self, all_movies: Dict[str, str], results: List[Tuple[str, str, float]],
                       query: str, intent: str) -> str:
-        """Format output based on result count (tiered strategy).
-        
-        Tier 1 (1-5 specific results): Detailed listing with metadata
-        Tier 2 (6-20 results): Summarized with top matches + count
-        Tier 3 (general scan / 20+ results): Statistics + 5 samples
-        
+        """Format output using 3-tier strategy to optimize token usage.
+
+        The formatting strategy adapts based on result count to balance
+        information density with token efficiency. Designed to minimize
+        LLM context consumption while providing useful information.
+
+        Tier 1 (1-5 specific results) - Detailed listing:
+            Full metadata per movie (title, year, quality, format, path)
+            Use case: Specific searches where user wants complete info
+            Example: "Do I have Inception?" -> Show full details
+            Token cost: ~150-200 tokens per movie
+
+        Tier 2 (6-20 results) - Summarized listing:
+            Top 5 movies with title + year only
+            Remaining count shown as "... and X more"
+            Use case: Broader searches with manageable result counts
+            Example: "Show action movies" -> Top 5 + count
+            Token cost: ~50-70 tokens per movie (top 5 only)
+
+        Tier 3 (20+ or general scan) - Statistics:
+            Total count + file type breakdown
+            5 sample movies (names only)
+            Use case: Library overviews or very broad searches
+            Example: "What movies do I have?" -> Stats + samples
+            Token cost: ~100-150 tokens total (independent of library size)
+
+        Tier thresholds explained:
+            - ≤5: User likely wants full details for few results
+            - 6-20: Moderate count, show top matches + indicate more available
+            - >20 or general_scan: Too many for listing, show overview
+
         Args:
-            all_movies: Complete dictionary of all movies
-            results: List of (movie_name, path, score) tuples
-            query: Original search query
-            intent: Intent type from parsing
-            
+            all_movies: Complete dictionary of all movies (used for stats)
+            results: Search results as (movie_name, path, score) tuples
+            query: Original search query (for display in output)
+            intent: Intent type ("specific_search", "format_filter", "general_scan")
+
         Returns:
-            Formatted output string
+            Formatted string optimized for LLM token efficiency
         """
         result_count = len(results)
         total_movies = len(all_movies)
