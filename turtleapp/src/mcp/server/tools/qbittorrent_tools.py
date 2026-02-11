@@ -4,8 +4,8 @@ import logging
 from typing import Annotated
 from pydantic import Field
 from fastmcp import FastMCP
-from mcp_qbittorrent.clients.qbittorrent_client import QBittorrentClient
-from mcp_qbittorrent.models.schemas import (
+from turtleapp.src.mcp.server.clients.qbittorrent_client import QBittorrentClient
+from turtleapp.src.mcp.server.models.schemas import (
     TorrentListResponse,
     TorrentInfoResponse,
     TorrentActionResponse,

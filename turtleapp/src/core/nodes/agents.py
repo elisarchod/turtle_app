@@ -13,7 +13,7 @@ from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
 from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_AGENT_PROMPT, SUBTITLE_MANAGER_PROMPT
 from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool, subtitle_search_tool, subtitle_download_tool
-from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
+from turtleapp.src.mcp.client.tools import get_qbittorrent_tools
 
 
 

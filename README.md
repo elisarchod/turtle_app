@@ -173,7 +173,7 @@ This multi-model approach balances cost, performance, and quality across the sys
 - **Role**: Movie download management expert
 - **Integration**: qBittorrent MCP server (HTTP transport)
 - **Capabilities**: Download monitoring, movie search, progress tracking
-- **Implementation**: `mcp-servers/qbittorrent-mcp/`
+- **Implementation**: `turtleapp/src/mcp/server/`
 
 ### Library Manager Tool
 - **Role**: Local movie library 
@@ -324,7 +324,7 @@ docker-compose up -d
 **Build Structure:**
 - Single `build/docker-compose.yml` for all services (main app, MCP server, qBittorrent, Samba)
 - Single `build/Dockerfile_api` for the Turtle App container
-- MCP server builds from `mcp-servers/qbittorrent-mcp/Dockerfile`
+- MCP server builds from `build/Dockerfile_mcp`
 
 #### Step 4: Test the API
 ```bash

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from turtleapp.src.utils import logger
 from turtleapp.src.workflows.graph import movie_workflow_agent
-from turtleapp.src.core.mcp.tools import cleanup_mcp_client
+from turtleapp.src.mcp.client.tools import cleanup_mcp_client
 
 
 @asynccontextmanager

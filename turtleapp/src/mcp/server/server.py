@@ -2,9 +2,9 @@
 
 import logging
 from fastmcp import FastMCP
-from mcp_qbittorrent.config import settings
-from mcp_qbittorrent.clients.qbittorrent_client import QBittorrentClient
-from mcp_qbittorrent.tools.qbittorrent_tools import register_tools
+from turtleapp.src.mcp.server.config import settings
+from turtleapp.src.mcp.server.clients.qbittorrent_client import QBittorrentClient
+from turtleapp.src.mcp.server.tools.qbittorrent_tools import register_tools
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +28,17 @@ qb_client = QBittorrentClient(
 register_tools(mcp, qb_client)
 
 logger.info(f"qBittorrent MCP server initialized with URL: {settings.qbittorrent_url}")
+
+
+def run_server():
+    """Entry point for MCP server (used by uvicorn/fastmcp CLI)."""
+    import subprocess
+    import sys
+    subprocess.run([
+        sys.executable, "-m", "fastmcp", "run",
+        "turtleapp.src.mcp.server.server:mcp",
+        "--transport", "http"
+    ])
 
 
 if __name__ == "__main__":

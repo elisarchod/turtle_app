@@ -24,10 +24,13 @@ dependencies = [
     "langchain-mcp-adapters>=0.1.11",
     "opensubtitles-com>=1.0.0",
     "requests>=2.31.0",
+    "fastmcp>=2.12.4",
+    "aiohttp>=3.12.15",
 ]
 
 [project.scripts]
 turtle-app-server = "turtleapp.api.routes.endpoints:main"
+turtle-mcp-server = "turtleapp.src.mcp.server.server:run_server"
 
 [project.optional-dependencies]
 test = [

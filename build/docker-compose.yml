@@ -3,8 +3,8 @@ name: turtle-app
 services:
   mcp-qbittorrent:
     build:
-      context: ../mcp-servers/qbittorrent-mcp
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: build/Dockerfile_mcp
     image: turtle-app/mcp-qbittorrent:latest
     container_name: turtle-mcp-qbittorrent
     environment:

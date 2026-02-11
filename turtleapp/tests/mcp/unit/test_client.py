@@ -3,7 +3,7 @@
 import pytest
 from aioresponses import aioresponses
 
-from mcp_qbittorrent.clients.qbittorrent_client import (
+from turtleapp.src.mcp.server.clients.qbittorrent_client import (
     QBittorrentClient,
     QBittorrentClientError,
 )

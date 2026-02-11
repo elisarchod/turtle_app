@@ -121,7 +121,7 @@ Returns to Supervisor → Response to User
    - Thread IDs are auto-generated if not provided
    - Global instance: `movie_workflow_agent`
 
-4. **MCP Integration** (`turtleapp/src/core/mcp/tools.py`)
+4. **MCP Integration** (`turtleapp/src/mcp/client/tools.py`)
    - Uses `MultiServerMCPClient` with HTTP transport (`streamable_http`)
    - `MCPClientManager` singleton handles connection lifecycle
    - Tools loaded lazily on first access via `get_qbittorrent_tools()`
@@ -173,17 +173,19 @@ Infrastructure (Docker overrides):
 
 ## MCP qBittorrent Server
 
-Located in `mcp-servers/qbittorrent-mcp/`:
+Located in `turtleapp/src/mcp/server/`:
 - **Transport**: HTTP (FastMCP with streamable_http)
-- **Server**: `src/mcp_qbittorrent/server.py`
-- **Client**: `src/mcp_qbittorrent/clients/qbittorrent_client.py`
-- **Tools**: `src/mcp_qbittorrent/tools/qbittorrent_tools.py` (6 tools)
-- **Models**: `src/mcp_qbittorrent/models/schemas.py` (Pydantic validation)
+- **Server**: `server.py`
+- **Client**: `clients/qbittorrent_client.py`
+- **Tools**: `tools/qbittorrent_tools.py` (6 tools)
+- **Models**: `models/schemas.py` (Pydantic validation)
 
 Running standalone:
 ```bash
-cd mcp-servers/qbittorrent-mcp
-uv run fastmcp run mcp_qbittorrent.server:mcp --transport http
+uv run turtle-mcp-server
+
+# Or directly with fastmcp
+uv run fastmcp run turtleapp.src.mcp.server.server:mcp --transport http
 ```
 
 ## Docker Architecture
@@ -191,7 +193,7 @@ uv run fastmcp run mcp_qbittorrent.server:mcp --transport http
 ### Build Structure
 - `build/docker-compose.yml`: All services (main app, MCP server, qBittorrent, Samba)
 - `build/Dockerfile_api`: Turtle App container
-- `mcp-servers/qbittorrent-mcp/Dockerfile`: MCP server container
+- `build/Dockerfile_mcp`: MCP server container
 
 ### Services
 - **turtle-api-server**: Port 9002 (maps to internal 8000)

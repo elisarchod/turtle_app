@@ -1,7 +1,7 @@
 """Test MCP integration with LangGraph (HTTP transport)."""
 
 import pytest
-from turtleapp.src.core.mcp.tools import get_qbittorrent_tools
+from turtleapp.src.mcp.client.tools import get_qbittorrent_tools
 
 
 def test_mcp_tools_load():

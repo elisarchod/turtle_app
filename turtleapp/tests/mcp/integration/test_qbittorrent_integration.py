@@ -7,10 +7,12 @@ Skip with: pytest -m "not integration"
 
 import pytest
 import requests
+import logging
 
-from mcp_qbittorrent.clients.qbittorrent_client import QBittorrentClient
-from mcp_qbittorrent.config import settings
-from mcp_qbittorrent.utils import logger
+from turtleapp.src.mcp.server.clients.qbittorrent_client import QBittorrentClient
+from turtleapp.src.mcp.server.config import settings
+
+logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.integration
 

@@ -6,8 +6,8 @@ Skip with: pytest -m "not integration"
 """
 
 import pytest
-from mcp_qbittorrent.clients.qbittorrent_client import QBittorrentClient
-from mcp_qbittorrent.config import settings
+from turtleapp.src.mcp.server.clients.qbittorrent_client import QBittorrentClient
+from turtleapp.src.mcp.server.config import settings
 
 
 @pytest.mark.integration

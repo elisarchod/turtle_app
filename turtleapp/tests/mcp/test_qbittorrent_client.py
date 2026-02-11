@@ -3,12 +3,12 @@
 import pytest
 from aioresponses import aioresponses
 
-from mcp_qbittorrent.clients.qbittorrent_client import (
+from turtleapp.src.mcp.server.clients.qbittorrent_client import (
     QBittorrentClient,
     AuthenticationError,
     APIError
 )
-from tests.fixtures import (
+from turtleapp.tests.mcp.fixtures import (
     mock_torrent_list,
     mock_torrent_properties,
     mock_torrent_files,

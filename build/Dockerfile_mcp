@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy only what's needed for MCP server
+COPY pyproject.toml uv.lock ./
+COPY turtleapp/__init__.py turtleapp/__init__.py
+COPY turtleapp/src/__init__.py turtleapp/src/__init__.py
+COPY turtleapp/src/mcp/ turtleapp/src/mcp/
+
+# Install dependencies
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Expose HTTP port
+EXPOSE 8000
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Run MCP server
+CMD [".venv/bin/fastmcp", "run", "turtleapp.src.mcp.server.server:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
