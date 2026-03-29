@@ -13,7 +13,6 @@ from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_agent_llm
 from turtleapp.src.core.prompts import AGENT_BASE_PROMPT, MOVIE_RETRIEVER_PROMPT, TORRENT_AGENT_PROMPT, SUBTITLE_MANAGER_PROMPT
 from turtleapp.src.core.tools import library_manager_tool, movie_retriever_tool, subtitle_search_tool, subtitle_download_tool
-from turtleapp.src.mcp.client.tools import get_qbittorrent_tools
 
 
 
@@ -128,16 +127,18 @@ def library_scan_node(state: MessagesState) -> Command[Literal["supervisor"]]:
 
 movie_retriever_agent = ToolAgent([movie_retriever_tool], specialized_prompt=MOVIE_RETRIEVER_PROMPT)
 
-# Download manager agent - uses MCP tools from qBittorrent MCP server
-torrent_agent = ToolAgent(
-    get_qbittorrent_tools(),  # Returns all MCP tools ready to use
-    name="movies_download_manager",
-    specialized_prompt=TORRENT_AGENT_PROMPT
-)
-
 # Subtitle manager agent - uses search and download tools
 subtitle_agent = ToolAgent(
     [subtitle_search_tool, subtitle_download_tool],
     name="subtitle_manager_agent",
     specialized_prompt=SUBTITLE_MANAGER_PROMPT
 )
+
+
+def create_torrent_agent(tools: List[Tool]) -> ToolAgent:
+    """Factory that builds the download manager agent with the given MCP tools."""
+    return ToolAgent(
+        tools,
+        name="movies_download_manager",
+        specialized_prompt=TORRENT_AGENT_PROMPT
+    )

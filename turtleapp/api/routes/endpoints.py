@@ -8,15 +8,17 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from turtleapp.src.utils import logger
-from turtleapp.src.workflows.graph import movie_workflow_agent
+import turtleapp.src.workflows.graph as _graph_module
+from turtleapp.src.workflows.graph import initialize_workflow
 from turtleapp.src.mcp.client.tools import cleanup_mcp_client
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle (startup/shutdown)."""
-    # Startup
-    # MCP client initializes lazily on first tool use
+    # Startup — load MCP tools and build the workflow graph.
+    await initialize_workflow()
+
     yield
 
     # Shutdown - cleanup MCP HTTP connections
@@ -81,9 +83,13 @@ if static_dir.exists():
 
 def _process_chat_request(message: str, thread_id: Optional[str] = None) -> ChatResponse:
     logger.info(f"Received request: {message}")
-    
+
+    workflow = _graph_module.movie_workflow_agent
+    if workflow is None:
+        raise HTTPException(status_code=503, detail="Workflow not initialized yet; please retry.")
+
     try:
-        result, used_thread_id = movie_workflow_agent.invoke(message, thread_id)
+        result, used_thread_id = workflow.invoke(message, thread_id)
         
         logger.info(f"Workflow completed successfully for thread: {used_thread_id}")
         

@@ -1,7 +1,9 @@
 """Test agents using MCP tools (HTTP transport)."""
 
+import asyncio
 import pytest
-from turtleapp.src.core.nodes.agents import torrent_agent
+from turtleapp.src.core.nodes.agents import create_torrent_agent
+from turtleapp.src.mcp.client.tools import load_qbittorrent_tools
 from langgraph.graph import MessagesState
 from langchain_core.messages import HumanMessage
 
@@ -10,15 +12,15 @@ from langchain_core.messages import HumanMessage
 def test_torrent_agent_with_mcp():
     """Test torrent agent can use MCP tools over HTTP."""
 
-    # Create test state (MessagesState expects dict with messages list)
+    tools = asyncio.run(load_qbittorrent_tools())
+    torrent_agent = create_torrent_agent(tools)
+
     state = MessagesState(
         messages=[HumanMessage(content="Search for Ubuntu 22.04 torrents")]
     )
 
-    # Invoke agent (returns Command with goto and update)
     command = torrent_agent.process(state)
 
-    # Check response
     assert command.goto == "supervisor"
     assert len(command.update["messages"]) > 0
 

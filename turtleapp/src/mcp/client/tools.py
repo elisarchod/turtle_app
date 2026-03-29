@@ -1,10 +1,14 @@
 """MCP tools loader using LangGraph native MCP support (HTTP transport)."""
 
 import asyncio
-from typing import Optional, Dict, Any
+import logging
+import warnings
+from typing import Optional, Dict, Any, List
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from turtleapp.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _get_qbittorrent_mcp_config() -> Dict[str, Any]:
@@ -59,27 +63,28 @@ class MCPClientManager:
 _manager = MCPClientManager()
 
 
-def get_qbittorrent_tools():
-    """Get all tools from qBittorrent MCP server.
+async def load_qbittorrent_tools() -> List:
+    """Load tools from qBittorrent MCP server, returning [] on failure."""
+    try:
+        client = await _manager.get_client()
+        tools = await client.get_tools()
+        logger.info(f"Loaded {len(tools)} qBittorrent MCP tools")
+        return tools
+    except Exception as exc:
+        logger.warning(f"qBittorrent MCP server unavailable, torrent agent disabled: {exc}")
+        return []
 
-    IMPORTANT: This function uses blocking asyncio.run() calls and should only
-    be called during agent initialization, not in async contexts.
 
-    Performs two synchronous async operations:
-    1. Connects to the MCP server via HTTP transport (if not already connected)
-    2. Loads all available tools from the server (search, download, status, etc.)
+def get_qbittorrent_tools() -> List:
+    """Deprecated: use load_qbittorrent_tools() (async) instead.
 
-    The tools are loaded once and cached in the agent. Subsequent requests use
-    the same tool instances without reconnecting.
-
-    Returns:
-        List of LangChain-compatible Tool objects from the qBittorrent MCP server.
-        Typically includes 6 tools: search, add_torrent, pause, resume, delete, get_status.
-
-    Network details:
-        - Docker: http://turtle-mcp-qbittorrent:8000/mcp (container-to-container)
-        - Local dev: http://localhost:9001/mcp (host machine)
+    Kept for backward compatibility. Blocks the event loop via asyncio.run().
     """
+    warnings.warn(
+        "get_qbittorrent_tools() is deprecated; use 'await load_qbittorrent_tools()' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     client = asyncio.run(_manager.get_client())
     return asyncio.run(client.get_tools())
 

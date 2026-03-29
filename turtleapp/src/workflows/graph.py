@@ -1,6 +1,6 @@
 """Workflow graph implementation for the turtle app."""
 
-from typing import Dict, Union, Callable
+from typing import Dict, List, Optional, Union, Callable
 
 from langgraph.constants import START
 from langgraph.graph import MessagesState, StateGraph
@@ -9,8 +9,9 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from turtleapp.src.core.constants import SUPERVISOR_NODE
 from turtleapp.src.core.llm_factory import create_supervisor_llm
-from turtleapp.src.core.nodes import library_scan_node, movie_retriever_agent, torrent_agent, subtitle_agent
+from turtleapp.src.core.nodes import library_scan_node, movie_retriever_agent, subtitle_agent, create_torrent_agent
 from turtleapp.src.core.nodes import SupervisorNodeCreator, ToolAgent
+from turtleapp.src.mcp.client.tools import load_qbittorrent_tools
 from turtleapp.src.utils.memory_utils import create_thread_id
 
 
@@ -134,41 +135,52 @@ class WorkflowGraph:
         return result, thread_id
 
 
-def create_movie_workflow() -> WorkflowGraph:
+def create_movie_workflow(torrent_tools: List = None) -> WorkflowGraph:
     """Create and compile the home theater management workflow.
 
-    Instantiates all specialized agents and wires them into a multi-agent workflow:
-    - movie_retriever_agent: Search movie database via Pinecone vector store
-    - movies_download_manager: Manage torrent downloads via qBittorrent MCP server
-    - library_manager_agent: Scan SMB/CIFS network shares for local movies
-    - subtitle_manager_agent: Search and download movie subtitles
-
-    Agent names in the dictionary must match the routing names used in the
-    supervisor's prompt to ensure proper request routing.
-
-    Returns:
-        Compiled WorkflowGraph ready for invocation
+    Args:
+        torrent_tools: MCP tools for the download manager agent. Pass [] to disable
+                       the torrent agent (e.g. when MCP server is unavailable).
+                       When None, the agent is still included but with no tools.
     """
+    torrent_agent = create_torrent_agent(torrent_tools or [])
     agentic_tools = {
         movie_retriever_agent.name: movie_retriever_agent,
         torrent_agent.name: torrent_agent,
         "library_manager_agent": library_scan_node,
-        subtitle_agent.name: subtitle_agent
+        subtitle_agent.name: subtitle_agent,
     }
-    
-    return (WorkflowGraph(tools=agentic_tools, name="Multi-agent Movie Supervisor")
-            .compile())
 
-# Global instances for backward compatibility
-movie_workflow_agent = create_movie_workflow() 
-movie_workflow_graph: CompiledStateGraph = movie_workflow_agent.compiled_graph
+    return WorkflowGraph(tools=agentic_tools, name="Multi-agent Movie Supervisor").compile()
+
+
+# Global instance — None until initialize_workflow() is called during lifespan startup.
+movie_workflow_agent: Optional[WorkflowGraph] = None
+movie_workflow_graph: Optional[CompiledStateGraph] = None
+
+
+async def initialize_workflow() -> WorkflowGraph:
+    """Load MCP tools and build the workflow; sets the module-level globals."""
+    global movie_workflow_agent, movie_workflow_graph
+
+    torrent_tools = await load_qbittorrent_tools()
+    movie_workflow_agent = create_movie_workflow(torrent_tools=torrent_tools)
+    movie_workflow_graph = movie_workflow_agent.compiled_graph
+    return movie_workflow_agent
 
 
 def run(message: str) -> str:
-    """Simple sync entry point"""
-    movie_graph = create_movie_workflow()
-    result, _ = movie_graph.invoke(message)
-    return result['messages'][-1].content
+    """Simple sync entry point for interactive/script use."""
+    import asyncio
+    graph = asyncio.run(_build_workflow_sync())
+    result, _ = graph.invoke(message)
+    return result["messages"][-1].content
+
+
+async def _build_workflow_sync() -> WorkflowGraph:
+    """Helper for the sync run() entry point."""
+    torrent_tools = await load_qbittorrent_tools()
+    return create_movie_workflow(torrent_tools=torrent_tools)
 
 if __name__ == '__main__':
     # Interactive mode - just import and use run()
