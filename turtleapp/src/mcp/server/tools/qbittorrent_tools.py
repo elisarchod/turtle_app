@@ -1,6 +1,8 @@
 """FastMCP tools for qBittorrent Web API."""
 
 import logging
+import urllib.parse
+import httpx
 from typing import Annotated
 from pydantic import Field
 from fastmcp import FastMCP
@@ -12,7 +14,9 @@ from turtleapp.src.mcp.server.models.schemas import (
     SearchResponse,
     PreferencesResponse,
     TorrentFilter,
-    TorrentAction
+    TorrentAction,
+    ApiBayResult,
+    ApiBaySearchResponse,
 )
 
 
@@ -320,3 +324,70 @@ def register_tools(mcp: FastMCP, qb_client: QBittorrentClient) -> None:
                 success=False,
                 error=f"Failed to get preferences: {str(e)}"
             )
+
+    _GB6 = 6 * 1024 ** 3
+
+    def _keep(r: ApiBayResult) -> bool:
+        name_lower = r.name.lower()
+        if "10bit" in name_lower or "10.bit" in name_lower:
+            return False
+        if "720" not in name_lower and "1080" not in name_lower:
+            return False
+        if r.size_bytes and r.size_bytes >= _GB6:
+            return False
+        return True
+
+    @mcp.tool()
+    async def apibay_search(
+        query: Annotated[
+            str,
+            Field(
+                description="Movie or content title to search (e.g., 'Terminator 2', 'The Matrix 1999')",
+                min_length=1,
+                max_length=200
+            )
+        ],
+        limit: Annotated[
+            int,
+            Field(
+                10,
+                description="Maximum number of results to return (sorted by seeders)",
+                ge=1,
+                le=50
+            )
+        ] = 10
+    ) -> ApiBaySearchResponse:
+        """Search for torrents on The Pirate Bay via apibay.org REST API.
+
+        Use this tool to find movie torrents when the user wants to download a film.
+        Returns magnet links that can be passed directly to qb_add_torrent.
+        """
+        url = "https://apibay.org/q.php"
+        params = {"q": query, "cat": ""}
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            torrents = response.json()
+
+        results = []
+        for t in torrents:
+            info_hash = t.get("info_hash", "")
+            name = t.get("name", "")
+            if not info_hash or info_hash == "0" * 40:
+                continue
+            encoded_name = urllib.parse.quote(name)
+            magnet = f"magnet:?xt=urn:btih:{info_hash}&dn={encoded_name}"
+            results.append(ApiBayResult(
+                name=name,
+                seeders=int(t.get("seeders", 0) or 0),
+                leechers=int(t.get("leechers", 0) or 0),
+                size_bytes=int(t.get("size", 0) or 0),
+                magnet=magnet,
+            ))
+
+        results = [r for r in results if _keep(r)]
+        results.sort(key=lambda r: r.seeders or 0, reverse=True)
+        results = results[:limit]
+
+        return ApiBaySearchResponse(query=query, count=len(results), results=results)

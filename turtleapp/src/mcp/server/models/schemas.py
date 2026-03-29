@@ -123,6 +123,22 @@ class PreferencesResponse(BaseModel):
     error: Optional[str] = Field(None, description="Error message if operation failed")
 
 
+class ApiBayResult(BaseModel):
+    """Single torrent result from apibay.org search."""
+    name: str
+    seeders: Optional[int] = None
+    leechers: Optional[int] = None
+    size_bytes: Optional[int] = None
+    magnet: str
+
+
+class ApiBaySearchResponse(BaseModel):
+    """Response for apibay.org torrent search."""
+    query: str = Field(description="The search query used")
+    count: int = Field(description="Number of results returned")
+    results: List[ApiBayResult] = Field(description="Torrent results with magnet links")
+
+
 # Type aliases for better LLM understanding
 TorrentFilter = Literal["all", "downloading", "completed", "paused", "active", "inactive", "resumed", "seeding", "stalled"]
 TorrentAction = Literal["pause", "resume", "delete"]

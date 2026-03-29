@@ -26,6 +26,7 @@ dependencies = [
     "requests>=2.31.0",
     "fastmcp>=2.12.4",
     "aiohttp>=3.12.15",
+    "httpx",
 ]
 
 [project.scripts]
