@@ -12,7 +12,7 @@ COPY turtleapp/src/__init__.py turtleapp/src/__init__.py
 COPY turtleapp/src/mcp/ turtleapp/src/mcp/
 
 # Install dependencies
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --extra mcp --no-install-project
 
 # Expose HTTP port
 EXPOSE 8000
