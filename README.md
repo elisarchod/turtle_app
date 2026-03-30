@@ -323,7 +323,7 @@ docker-compose up -d
 **That's it!** Your services are now running:
 - **Turtle App API**: http://localhost:9002
 - **MCP qBittorrent Server**: http://localhost:9001 (HTTP MCP endpoint)
-- **qBittorrent Web UI**: http://localhost:15080 (admin/adminadmin)
+- **qBittorrent Web UI**: http://localhost:15080 (credentials set in `.env`)
 - **Samba Share**: Available on network ports 1139/1445
 
 **Build Structure:**
@@ -416,8 +416,8 @@ STACK_PATH=./volumes
 **Services Created:**
 - **Turtle App API**: `http://localhost:9002`
 - **MCP qBittorrent Server**: `http://localhost:9001/mcp` (HTTP MCP endpoint)
-- **qBittorrent**: `http://localhost:15080` (admin/adminadmin)
-- **Samba**: Network share `\\localhost\daves` (dave/password)
+- **qBittorrent**: `http://localhost:15080` (credentials set in `.env`)
+- **Samba**: Network share `\\localhost\daves` (credentials set in `.env`)
 
 #### External Deployment
 For external qBittorrent/Samba servers, see `.env.external` example:
