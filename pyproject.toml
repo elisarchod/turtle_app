@@ -63,7 +63,7 @@ packages = ["src/application", "src/core", "src/infrastructure", "src/interface"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-testpaths = ["src/tests"]
+testpaths = ["tests"]
 addopts = ["-v", "--color=yes", "--log-cli-level=INFO"]
 asyncio_mode = "auto"
 filterwarnings = [
