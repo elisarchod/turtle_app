@@ -39,7 +39,8 @@ services:
     image: turtle-app/api:latest
     container_name: turtle-api-server
     env_file:
-      - ../.env.local
+      - path: ../.env.local
+        required: false
     environment:
       - TURTLEAPP_MCP_QBITTORRENT_URL=http://turtle-mcp-qbittorrent:8000/mcp
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
