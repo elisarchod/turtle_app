@@ -22,7 +22,6 @@ dependencies = [
     "duckdb>=0.9.0",
     "langchain>=0.3.26",
     "langchain-mcp-adapters>=0.1.11",
-    "opensubtitles-com>=1.0.0",
     "requests>=2.31.0",
     "fastmcp>=2.12.4",
     "aiohttp>=3.12.15",
@@ -30,8 +29,8 @@ dependencies = [
 ]
 
 [project.scripts]
-turtle-app-server = "turtleapp.api.routes.endpoints:main"
-turtle-mcp-server = "turtleapp.src.mcp.server.server:run_server"
+turtle-app-server = "interface.cli.server:main"
+turtle-mcp-server = "infrastructure.mcp.server.server:run_server"
 
 [project.optional-dependencies]
 mcp = [
@@ -49,17 +48,22 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0",
+    "aioresponses>=0.7.0",
 ]
 dev = [
     "jupyter>=1.1.1",
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/application", "src/core", "src/infrastructure", "src/interface"]
 
 [tool.pytest.ini_options]
-testpaths = ["turtleapp/tests"]
+pythonpath = ["src"]
+testpaths = ["src/tests"]
 addopts = ["-v", "--color=yes", "--log-cli-level=INFO"]
 asyncio_mode = "auto"
 filterwarnings = [
@@ -69,4 +73,5 @@ filterwarnings = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "expensive: marks tests that use real LLM calls (deselect with '-m \"not expensive\"')",
+    "integration: marks tests requiring live external services (deselect with '-m \"not integration\"')",
 ]

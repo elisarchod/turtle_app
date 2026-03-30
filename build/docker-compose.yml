@@ -38,9 +38,8 @@ services:
       dockerfile: build/Dockerfile_api
     image: turtle-app/api:latest
     container_name: turtle-api-server
-    # Optional: uncomment if .env.local exists
-    # env_file:
-    #   - ../.env.local
+    env_file:
+      - ../.env.local
     environment:
       - TURTLEAPP_MCP_QBITTORRENT_URL=http://turtle-mcp-qbittorrent:8000/mcp
       - SAMBA_SHARE_PATH=${SAMBA_SHARE_PATH:-daves}
@@ -49,6 +48,12 @@ services:
     ports:
       - 8202:8000
     restart: "no"
+    healthcheck:
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     profiles:
       - api
     networks:

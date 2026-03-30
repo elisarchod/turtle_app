@@ -50,6 +50,13 @@ volumes/
 downloads/
 *.log
 
+# Sensitive / local-only directories
+sandbox/
+plans/
+src/notebooks/
+build/volumes/
+build/downloads/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -62,3 +69,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Lock files
+poetry.lock
+!uv.lock

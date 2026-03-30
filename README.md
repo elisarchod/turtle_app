@@ -140,7 +140,7 @@ sequenceDiagram
 - Handles complex reasoning and routing decisions
 - Needs sophisticated understanding to route between agents correctly
 
-**Tool Agents: Claude 3.5 Haiku** 
+**Tool Agents: Claude 3.5 Haiku**
 - Optimized for speed and cost on focused tasks
 - Multiple calls per request, so cost efficiency matters
 - Sufficient capability for single-domain operations (movies, downloads)
@@ -161,30 +161,36 @@ This multi-model approach balances cost, performance, and quality across the sys
 ### Supervisor Agent
 - **Role**: Central coordinator that routes user requests to appropriate specialized agents
 - **Technology**: Claude 3.5 Sonnet with custom routing prompts
-- **Implementation**: `turtleapp/src/nodes/supervisor.py`
+- **Implementation**: `src/application/agents/supervisor.py`
 
 ### Movie Retriever Agent (RAG)
 - **Role**: Movie database expert with 42,000+ movie summaries
 - **Data Source**: Pinecone vector database with CMU Movie Summary Corpus
 - **Capabilities**: Movie recommendations, plot analysis, metadata retrieval
-- **Implementation**: `turtleapp/src/core/tools/movie_summaries_retriever.py`
+- **Implementation**: `src/infrastructure/vector_store/pinecone_retriever.py`
 
 ### Movie Download Manager (with MCP)
 - **Role**: Movie download management expert
 - **Integration**: qBittorrent MCP server (HTTP transport)
 - **Capabilities**: Download monitoring, movie search, progress tracking
-- **Implementation**: `turtleapp/src/mcp/server/`
+- **Implementation**: `src/infrastructure/mcp/server/`
 
 ### Library Manager Tool
-- **Role**: Local movie library 
+- **Role**: Local movie library scanner
 - **Integration**: Samba/CIFS network shares
 - **Capabilities**: Library scanning, file organization, statistics
-- **Implementation**: `turtleapp/src/core/tools/library_manager.py`
+- **Implementation**: `src/infrastructure/smb/library_manager.py`
+
+### Subtitle Manager Agent
+- **Role**: Subtitle search and download expert
+- **Integration**: OpenSubtitles.com API
+- **Capabilities**: Search subtitles by movie/file ID, download to local movie directory
+- **Implementation**: `src/infrastructure/subtitles/`
 
 ### API Layer
-- **Technology**: FastAPI with synchronous endpoints
+- **Technology**: FastAPI with async endpoints
 - **Endpoints**: `/chat` (main), `/health` (status)
-- **Implementation**: `turtleapp/api/routes/endpoints.py`
+- **Implementation**: `src/interface/api/`
 
 ## Technology Stack
 
@@ -227,16 +233,16 @@ This multi-model approach balances cost, performance, and quality across the sys
 - **Library Management**: SMB/CIFS network share scanning
 - **REST API**: FastAPI endpoint for external interactions
 - **Data Pipeline**: Movie data processing and vector store upload
-  - **Data Pipeline Manager** (`turtleapp/data_pipeline/vector_store/vector_store_manager.py`):
+  - **Data Pipeline Manager** (`src/infrastructure/vector_store/data_pipeline/manager.py`):
     - `MovieDataLoader`: Loads movie data from CSV files with configurable limits (default: 300 documents)
     - `PineconeVectorStoreManager`: Manages Pinecone index creation and document uploads
     - Batch processing with concurrent uploads for performance (100 docs/batch, 4 workers)
     - Automatic index creation with 3072-dimensional embeddings and cosine similarity
-  - **Pipeline Runner** (`turtleapp/data_pipeline/vector_store/upload_script.py`):
+  - **Pipeline Runner** (`src/infrastructure/vector_store/data_pipeline/upload_script.py`):
     - Main script for executing the data pipeline
     - Handles the complete flow from data loading to vector store upload
     - Async processing for improved performance
-  - **Data Storage** (`turtleapp/data_pipeline/data/processed/`):
+  - **Data Storage** (`src/infrastructure/vector_store/data_pipeline/data/processed/`):
     - `wiki_movie_plots_cleaned.csv`: Processed movie plot data from CMU Movie Summary Corpus
     - Contains movie summaries, metadata, and plot descriptions for vector embedding
 - **Testing**: Comprehensive test suite for all core components
@@ -252,7 +258,6 @@ This multi-model approach balances cost, performance, and quality across the sys
   - [ ] Real-time torrent progress monitoring
   - [ ] Automatic library refresh after downloads
   - [ ] Cross-platform media player integration
-  - [ ] Subtitle and metadata management
 
 ### Recently Completed
 
@@ -386,7 +391,7 @@ docker-compose up -d qbittorrent nas
 #### Step 3: Run the API
 ```bash
 # Start the Turtle App API
-uv run uvicorn turtleapp.api.routes.endpoints:app --host 0.0.0.0 --port 8000
+uv run uvicorn interface.api.app:app --host 0.0.0.0 --port 8000
 ```
 
 ### Configuration Details
@@ -417,9 +422,9 @@ STACK_PATH=./volumes
 #### External Deployment
 For external qBittorrent/Samba servers, see `.env.external` example:
 ```env
-QBITTORRENT_HOST=http://192.168.1.205:15080
-SAMBA_SERVER=192.168.1.205
-SAMBA_SHARE_PATH=\\192.168.1.205\daves\elements_main\torrent\incomplete
+QBITTORRENT_HOST=http://YOUR_SERVER_IP:15080
+SAMBA_SERVER=YOUR_SERVER_IP
+SAMBA_SHARE_PATH=\\YOUR_SERVER_IP\your_share\path
 ```
 
 ### API Usage
@@ -444,7 +449,7 @@ curl "http://localhost:8000/health"
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=turtleapp
+uv run pytest --cov=src
 
 # Run tests in parallel
 uv run pytest -n auto
@@ -452,9 +457,8 @@ uv run pytest -n auto
 # Skip slow tests
 uv run pytest -m "not slow"
 
-# Run specific test files
-uv run pytest turtleapp/tests/test_api_endpoints.py
-uv run pytest turtleapp/tests/test_mcp_integration.py
-uv run pytest turtleapp/tests/test_library_manager.py
-uv run pytest turtleapp/tests/test_retriever.py
+# Run specific test layers
+uv run pytest src/tests/interface/
+uv run pytest src/tests/infrastructure/
+uv run pytest src/tests/application/
 ```

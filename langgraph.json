@@ -3,7 +3,7 @@
     "."
   ],
   "graphs": {
-    "home_recommender": "turtleapp/src/workflows/graph.py:movie_workflow_graph"
+    "home_recommender": "src/application/workflows/graph.py:movie_workflow_graph"
   },
   "env": ".env"
 }

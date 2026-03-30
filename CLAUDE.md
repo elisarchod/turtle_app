@@ -8,6 +8,20 @@ Turtle App is an AI-powered home theater assistant that uses a multi-agent super
 
 **Key Architecture**: Supervisor agent (Claude Sonnet) routes requests to specialized agents (Claude Haiku) that use specific tools. The download manager integrates via MCP server using HTTP transport.
 
+## Layered Architecture
+
+The codebase follows a strict 4-layer architecture with dependency direction: `interface → application → core ← infrastructure`.
+
+```
+src/
+├── core/           # Pure domain logic, constants, utility functions — no external deps
+├── infrastructure/ # External integrations: LLM, Pinecone, SMB, subtitles, MCP
+├── application/    # Use cases, agent orchestration, workflows
+└── interface/      # Entry points: FastAPI app, CLI server
+```
+
+**No upward imports**: `core` never imports from `application`/`infrastructure`. `infrastructure` never imports from `application`/`interface`.
+
 ## Development Commands
 
 ### Environment Setup
@@ -28,7 +42,7 @@ cp .env.example .env
 
 ```bash
 # Start API server locally
-uv run uvicorn turtleapp.api.routes.endpoints:app --host 0.0.0.0 --port 8000
+uv run uvicorn interface.api.app:app --host 0.0.0.0 --port 8000
 
 # Alternative: use entry point
 uv run turtle-app-server
@@ -49,7 +63,7 @@ docker-compose logs -f mcp-qbittorrent
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=turtleapp
+uv run pytest --cov=src
 
 # Run tests in parallel
 uv run pytest -n auto
@@ -58,30 +72,27 @@ uv run pytest -n auto
 uv run pytest -m "not slow"
 uv run pytest -m "not expensive"
 
-# Run specific test files
-uv run pytest turtleapp/tests/test_api_endpoints.py
-uv run pytest turtleapp/tests/test_mcp_integration.py
-uv run pytest turtleapp/tests/test_graph_workflow.py
+# Run specific test layers
+uv run pytest src/tests/interface/
+uv run pytest src/tests/infrastructure/
+uv run pytest src/tests/application/
 ```
 
 ### Data Pipeline
 
 ```bash
 # Upload movie data to Pinecone vector store
-uv run python turtleapp/data_pipeline/vector_store/upload_script.py
+uv run python src/infrastructure/vector_store/data_pipeline/upload_script.py
 
-# Data source: turtleapp/data_pipeline/data/processed/wiki_movie_plots_cleaned.csv
+# Data source: src/infrastructure/vector_store/data_pipeline/data/processed/wiki_movie_plots_cleaned.csv
 # Default: 300 documents, configurable in MovieDataLoader
 ```
 
 ### Interactive Development
 
 ```bash
-# Test workflow directly
-python turtleapp/src/workflows/graph.py
-
 # Use in Python REPL
-from turtleapp.src.workflows.graph import run
+from application.workflows.graph import run
 response = run("Tell me about Terminator 2")
 ```
 
@@ -97,57 +108,61 @@ Supervisor Agent (Claude Sonnet)
 Routes to → Movie Retriever Agent    [Tool: Pinecone Vector Search]
          → Download Manager Agent    [Tools: MCP qBittorrent Tools]
          → Library Manager Agent     [Tool: SMB/CIFS Scanner]
+         → Subtitle Manager Agent    [Tools: OpenSubtitles Search + Download]
     ↓
 Returns to Supervisor → Response to User
 ```
 
 ### Key Components
 
-1. **Supervisor Node** (`turtleapp/src/core/nodes/supervisor.py`)
+1. **Supervisor Node** (`src/application/agents/supervisor.py`)
    - Uses Claude Sonnet for routing decisions
    - Returns `Command(goto=agent_name)` to route requests
    - Routes to END when conversation is complete
    - Uses structured output with `Router` TypedDict
 
-2. **ToolAgent Class** (`turtleapp/src/core/nodes/agents.py`)
+2. **ToolAgent Class** (`src/application/agents/tool_agent.py`)
    - Wraps LangChain ReAct agents with tools
    - Uses `AgentExecutor` with `handle_parsing_errors=True`, `max_iterations=3`
    - Returns `Command(update=messages, goto=SUPERVISOR_NODE)`
    - All agents return to supervisor after execution
 
-3. **Workflow Graph** (`turtleapp/src/workflows/graph.py`)
+3. **Workflow Graph** (`src/application/workflows/graph.py`)
    - `WorkflowGraph` class compiles LangGraph StateGraph with MemorySaver
    - `invoke()` method handles thread management and config structure
    - Thread IDs are auto-generated if not provided
    - Global instance: `movie_workflow_agent`
 
-4. **MCP Integration** (`turtleapp/src/mcp/client/tools.py`)
+4. **MCP Integration** (`src/infrastructure/mcp/client/tools.py`)
    - Uses `MultiServerMCPClient` with HTTP transport (`streamable_http`)
    - `MCPClientManager` singleton handles connection lifecycle
    - Tools loaded lazily on first access via `get_qbittorrent_tools()`
    - Cleanup handled in FastAPI lifespan
 
-5. **API Layer** (`turtleapp/api/routes/endpoints.py`)
-   - FastAPI with synchronous execution (no async)
-   - Thread management handled by `movie_workflow_agent.invoke()`
-   - MCP cleanup in lifespan context manager
+5. **API Layer** (`src/interface/api/`)
+   - `app.py`: FastAPI app instance + lifespan
+   - `routes.py`: `/chat`, `/health` endpoints
+   - `schemas.py`: Pydantic request/response models
+   - CLI entry point: `src/interface/cli/server.py`
 
 ### Agent Specializations
 
 - **movie_retriever_agent**: Single tool (Pinecone vector search), custom prompt for movie expertise
-- **torrent_agent** (download manager): Multiple MCP tools from qBittorrent server, base prompt
+- **movies_download_manager**: Multiple MCP tools from qBittorrent server, custom torrent prompt
 - **library_manager_agent**: Direct node function (no ReAct reasoning), SMB/CIFS scanning
+- **subtitle_manager_agent**: Two tools (search + download via OpenSubtitles), custom subtitle prompt
 
 ### Tool Organization
 
 Tools are direct instances, not factories:
-- `movie_retriever_tool` (turtleapp/src/core/tools/movie_summaries_retriever.py)
-- `library_manager_tool` (turtleapp/src/core/tools/library_manager.py)
+- `movie_retriever_tool` (`src/infrastructure/vector_store/pinecone_retriever.py`)
+- `library_manager_tool` (`src/infrastructure/smb/library_manager.py`)
+- `subtitle_search_tool`, `subtitle_download_tool` (`src/infrastructure/subtitles/subtitle_tools.py`)
 - MCP tools loaded dynamically from qBittorrent server
 
 ## Configuration & Settings
 
-### Settings System (`turtleapp/settings.py`)
+### Settings System (`src/infrastructure/config/settings.py`)
 
 Pydantic-based settings with nested configuration classes:
 - `PineconeSettings`: Vector DB connection
@@ -155,8 +170,9 @@ Pydantic-based settings with nested configuration classes:
 - `ClaudeSettings`: API keys
 - `MCPSettings`: HTTP URL for MCP server
 - `SMBSettings`: Network share credentials
+- `OpenSubtitlesSettings`: OpenSubtitles.com API credentials and default languages
 
-Access via singleton: `from turtleapp.settings import settings`
+Access via singleton: `from infrastructure.config.settings import settings`
 
 ### Environment Variables Structure
 
@@ -171,9 +187,12 @@ MCP Server:
 Infrastructure (Docker overrides):
 - `QBITTORRENT_HOST`, `SAMBA_SERVER`, `SAMBA_SHARE_PATH`
 
+Subtitles (optional):
+- `OPENSUBTITLES_API_KEY`, `OPENSUBTITLES_USERNAME`, `OPENSUBTITLES_PASSWORD`
+
 ## MCP qBittorrent Server
 
-Located in `turtleapp/src/mcp/server/`:
+Located in `src/infrastructure/mcp/server/`:
 - **Transport**: HTTP (FastMCP with streamable_http)
 - **Server**: `server.py`
 - **Client**: `clients/qbittorrent_client.py`
@@ -185,7 +204,7 @@ Running standalone:
 uv run turtle-mcp-server
 
 # Or directly with fastmcp
-uv run fastmcp run turtleapp.src.mcp.server.server:mcp --transport http
+uv run fastmcp run infrastructure.mcp.server.server:mcp --transport http
 ```
 
 ## Docker Architecture
@@ -210,7 +229,7 @@ uv run fastmcp run turtleapp.src.mcp.server.server:mcp --transport http
 ### Creating New Agents
 
 ```python
-from turtleapp.src.core.nodes.agents import ToolAgent
+from application.agents.tool_agent import ToolAgent
 from langchain_core.tools import Tool
 
 # Create tool instance
@@ -227,7 +246,7 @@ my_agent = ToolAgent([my_tool], specialized_prompt=custom_prompt)
 
 ### Adding Agents to Workflow
 
-In `turtleapp/src/workflows/graph.py`:
+In `src/application/workflows/graph.py`:
 ```python
 def create_movie_workflow() -> WorkflowGraph:
     agentic_tools = {
@@ -240,7 +259,7 @@ def create_movie_workflow() -> WorkflowGraph:
 
 Use the decorator for consistent error handling:
 ```python
-from turtleapp.src.utils import handle_tool_errors
+from core.utils.error_handler import handle_tool_errors
 
 @handle_tool_errors(default_return="Operation failed")
 def _run(self, input: str) -> str:
@@ -249,7 +268,7 @@ def _run(self, input: str) -> str:
 
 ### Supervisor Prompts
 
-Supervisor uses structured output routing (`turtleapp/src/core/prompts/supervisor.py`):
+Supervisor uses structured output routing (`src/application/agents/prompts/supervisor.py`):
 - Returns `{"next": "agent_name"}` for routing
 - Returns `{"next": "FINISH"}` to end conversation
 - Agent names must match keys in workflow tools dict
@@ -260,13 +279,13 @@ Supervisor uses structured output routing (`turtleapp/src/core/prompts/superviso
 - `@pytest.mark.slow`: Tests with significant runtime
 - `@pytest.mark.expensive`: Tests making real LLM API calls
 
-### Test Structure
-- `test_api_endpoints.py`: FastAPI endpoint tests
-- `test_mcp_integration.py`: MCP client/server integration
-- `test_graph_workflow.py`: Multi-agent workflow tests
-- `test_agent_mcp.py`, `test_graph_mcp.py`: MCP-specific agent tests
-- `test_retriever.py`: Pinecone vector search tests
-- `test_library_manager.py`: SMB/CIFS integration tests
+### Test Structure (mirrors layered architecture)
+```
+src/tests/
+├── application/    # test_graph_workflow.py, test_graph_mcp.py, test_agent_mcp.py
+├── infrastructure/ # test_retriever.py, test_library_manager.py, test_mcp_integration.py, mcp/
+└── interface/      # test_api_endpoints.py
+```
 
 ### Async Testing
 - `pytest-asyncio` configured with `asyncio_mode = "auto"`

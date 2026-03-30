@@ -7,9 +7,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy only what's needed for MCP server
 COPY pyproject.toml uv.lock ./
-COPY turtleapp/__init__.py turtleapp/__init__.py
-COPY turtleapp/src/__init__.py turtleapp/src/__init__.py
-COPY turtleapp/src/mcp/ turtleapp/src/mcp/
+COPY src/__init__.py src/__init__.py
+COPY src/infrastructure/__init__.py src/infrastructure/__init__.py
+COPY src/infrastructure/mcp/ src/infrastructure/mcp/
+COPY src/infrastructure/config/ src/infrastructure/config/
 
 # Install dependencies
 RUN uv sync --frozen --no-dev --extra mcp --no-install-project
@@ -18,7 +19,7 @@ RUN uv sync --frozen --no-dev --extra mcp --no-install-project
 EXPOSE 8000
 
 # Set Python path
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # Run MCP server
-CMD [".venv/bin/fastmcp", "run", "turtleapp.src.mcp.server.server:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
+CMD [".venv/bin/fastmcp", "run", "infrastructure.mcp.server.server:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
